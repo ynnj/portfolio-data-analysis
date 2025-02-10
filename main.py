@@ -9,7 +9,7 @@ subprocess.run(["python3", "src/store_trades.py"])
 
 # Step 2: Analyze trades
 print("📊 Running trade analysis...")
-subprocess.run(["python3", "src/analyze_trades.py"])
+subprocess.run(["python3", "src/trade_analysis.py"])
 
 # Step 3: Launch the Streamlit dashboard
 print("📈 Opening trade dashboard...")
