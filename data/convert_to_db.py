@@ -1,9 +1,12 @@
 import pandas as pd
 import sqlite3
+import os
 
 # Define file paths
-csv_file = "Tradersync-2.csv"  # Ensure this file is in the same directory
-db_file = "trades.db"
+SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
+csv_file = os.path.join(SCRIPT_DIR, "Tradersync-2.csv")
+db_file = os.path.join(SCRIPT_DIR, "trades.db")  # Store database in the same directory
+
 
 # Load the CSV file into a Pandas DataFrame
 df = pd.read_csv(csv_file)

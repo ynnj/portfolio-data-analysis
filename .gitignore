@@ -1,4 +1,6 @@
 unode_modules/
 .env
 uploads/
-files/
+option-trading-analysis.xlsx
+Transactions_Check.xlsx
+data/paper_all_transactions.db

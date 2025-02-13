@@ -4,7 +4,7 @@ import numpy as np
 import os
 
 # Connect to SQLite
-DB_PATH = os.path.join(os.path.dirname(__file__), "../data/paper_all_transactions.db")
+DB_PATH = os.path.join(os.path.dirname(__file__), "../data/real_all_transactions.db")
 conn = sqlite3.connect(DB_PATH)
 cursor = conn.cursor()
 
