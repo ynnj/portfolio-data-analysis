@@ -1,5 +1,10 @@
 # Portfolio Data Analysis DashBoard
-**Trade Performance and Risk Analysis Dashboard** that tracks and analyzes your trades. This project features **data collection, analysis, visualization, and machine learning**.
+Trade Performance and Risk Analysis Dashboard that tracks and analyzes your trades. This project features **data collection, analysis, visualization, and machine learning**.
+
+---
+### **Demo** 🚀  
+Streamlit Cloud deployment: https://portfolio-dashboard-example-scott-morgan.streamlit.app/
+---
 
 ### **Features**  
 #### 1. **Data Collection**  
@@ -79,8 +84,3 @@ Would you like help getting started with the initial data pipeline? 🚀
     ├── test_ml_model.py
 ```
 
----
-### **Demo** 🚀  
-Streamlit Cloud deployment: https://portfolio-dashboard-example-scott-morgan.streamlit.app/
-
----
