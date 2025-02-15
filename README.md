@@ -1,7 +1,7 @@
-# portfolio-data-analysis
-**Trade Performance and Risk Analysis Dashboard** that tracks and analyzes your trades. This project can showcase skills in **data collection, analysis, visualization, and machine learning** while directly relating to your domain expertise.  
+# Portfolio Data Analysis DashBoard
+**Trade Performance and Risk Analysis Dashboard** that tracks and analyzes your trades. This project features **data collection, analysis, visualization, and machine learning**.
 
-### **Project Breakdown**  
+### **Features**  
 #### 1. **Data Collection**  
    - Pull real-time or historical options data using an API (e.g., Alpaca, Interactive Brokers, Yahoo Finance).  
    - Log your trades automatically using broker APIs or manually input trades into a database (SQLite/PostgreSQL).  
@@ -80,18 +80,7 @@ Would you like help getting started with the initial data pipeline? 🚀
 ```
 
 ---
-
-### **Key Features**
-✅ **Modular & Scalable** → Organized for easy expansion (add new features later).  
-✅ **Reproducible** → Jupyter Notebooks track step-by-step analysis.  
-✅ **Automated Testing** → Unit tests ensure reliability.  
-✅ **Dashboard for Visualization** → Shows performance & risk metrics interactively.  
-✅ **Backtesting & ML Potential** → Optional predictive trade classification.  
+### **Demo** 🚀  
+Streamlit Cloud deployment: https://portfolio-dashboard-example-scott-morgan.streamlit.app/
 
 ---
-
-### **Next Steps** 🚀  
-1️⃣ **Set up your repo on GitHub** (`options-trading-analysis`).  
-2️⃣ **Start with data collection** → Fetch trade data via API or CSV logs.  
-3️⃣ **Build a simple analysis script** → Compute basic performance metrics.  
-4️⃣ **Expand with EDA, backtesting, and visualization**.  
