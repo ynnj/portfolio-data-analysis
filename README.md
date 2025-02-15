@@ -1,4 +1,4 @@
-# Portfolio Data Analysis DashBoard
+# Portfolio Data Analysis Dashboard
 Trade Performance and Risk Analysis Dashboard that tracks and analyzes your trades. 
 This project features **data collection, analysis, visualization, and machine learning**.
 
@@ -28,6 +28,7 @@ Streamlit Cloud deployment: https://portfolio-dashboard-example-scott-morgan.str
    - Predict future performance based on past trading behavior.  
    - Clustering strategies (e.g., k-means to segment successful vs. unsuccessful trades).  
 
+---
 ### **Tech Stack**  
 - **Python** (Pandas, NumPy, Scikit-Learn, Matplotlib/Plotly)  
 - **Data Sources** (Alpaca, IBKR, Yahoo Finance, Quandl)  
