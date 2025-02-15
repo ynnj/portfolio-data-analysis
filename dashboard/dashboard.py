@@ -1,15 +1,37 @@
 import streamlit as st
 import pandas as pd
 import sqlite3
+import numpy as np
 import os
 import plotly.express as px
+from streamlit_elements import elements, mui, html, dashboard
+import random
+import calplot  # Install: pip install calplot
+import matplotlib.pyplot as plt
+from datetime import datetime, timedelta
+from streamlit_calendar import calendar
+from wordcloud import WordCloud
+from sklearn.cluster import KMeans
+from sklearn.preprocessing import StandardScaler
 
 # Set Streamlit page config
-st.set_page_config(page_title="Trade Performance Dashboard", layout="wide")
+st.set_page_config(page_title="Trade Performance Dashboard", layout="wide",initial_sidebar_state="expanded")
+
+st.markdown(
+    """
+    <style>
+        section[data-testid="stSidebar"] {
+            width: 70px !important;  /* Adjust this value as needed */
+        }
+    </style>
+    """,
+    unsafe_allow_html=True,
+)
+
 
 # Connect to SQLite
-DB_PATH = os.path.join(os.path.dirname(__file__), "../data/real_all_transactions.db")
-conn = sqlite3.connect(DB_PATH)
+# DB_PATH = os.path.join(os.path.dirname(__file__), "real_all_transactions.db")
+conn = sqlite3.connect("real_all_transactions.db")
 
 # Load Metrics (Latest Snapshot)
 metrics = pd.read_sql("SELECT * FROM trade_metrics ORDER BY date DESC LIMIT 1", conn)
@@ -44,325 +66,408 @@ avg_pnl_by_weekday = avg_pnl_by_weekday.sort_values(by="average_daily_pnl", asce
 avg_pnl_by_symbol = df.groupby('symbol')['net_pnl'].mean().reset_index()
 avg_pnl_by_symbol = avg_pnl_by_symbol.sort_values(by="net_pnl", ascending=False)
 
-col1, col2, col3, col4, col5 = st.columns(5)
-col1.metric("Total Trades", int(latest_metrics['total_trades']))
-col2.metric("Win Rate (%)", f"{latest_metrics['win_rate']:.2f}")
-col3.metric("Profit Factor", f"{latest_metrics['profit_factor']:.2f}")
-col4.metric("PnL", f"{df['cumulative_pnl'].iloc[-1]:.2f}")
-col5.metric("Max Drawdown ($)", f"{latest_metrics['max_drawdown']:.2f}")
+# Compute cumulative P&L
+df['cumulative_pnl'] = df['net_pnl'].cumsum()
+latest_metrics = metrics.iloc[0]
+
+
 
 # Sidebar filters
-st.sidebar.header("🔍 Filters")
-selected_symbols = st.sidebar.multiselect("Select Asset Symbols", df['symbol'].unique(), default=df['symbol'].unique())
-date_range = st.sidebar.date_input("Select Date Range", [df['trade_date'].min(), df['trade_date'].max()])
+# st.sidebar.header("🔍 Filters")
+# selected_symbols = st.sidebar.multiselect("Select Asset Symbols", df['symbol'].unique(), default=df['symbol'].unique())
+# date_range = st.sidebar.date_input("Select Date Range", [df['trade_date'].min(), df['trade_date'].max()])
 
-# Apply filters
-df_filtered = df[(df['symbol'].isin(selected_symbols)) & (df['trade_date'].between(date_range[0], date_range[1]))]
+# # Apply filters
+# df_filtered = df[(df['symbol'].isin(selected_symbols)) & (df['trade_date'].between(date_range[0], date_range[1]))]
+df_filtered=df.copy()
 
-st.title("📊 Trade Performance Dashboard")
+# Sidebar Key Metrics
+st.sidebar.header('📊 Key Metrics')
+st.sidebar.metric(label='Total P/L', value=f"€{df['cumulative_pnl'].iloc[-1]:.2f}", delta="1.2 °F")
+st.sidebar.metric("Total Trades", int(latest_metrics['total_trades']))
+st.sidebar.metric("Win Rate (%)", f"{latest_metrics['win_rate']:.2f}")
 
-# Display Latest Key Metrics in an expander
-with st.expander("📌 **Key Metrics**", expanded=True):
-    col1, col2, col3, col4, col5 = st.columns(5)
-    col1.metric("Total Trades", int(latest_metrics['total_trades']))
-    col2.metric("Win Rate (%)", f"{latest_metrics['win_rate']:.2f}")
-    col3.metric("Profit Factor", f"{latest_metrics['profit_factor']:.2f}")
-    col4.metric("Sharpe Ratio", f"{latest_metrics['sharpe_ratio']:.2f}")
-    col5.metric("Max Drawdown ($)", f"{latest_metrics['max_drawdown']:.2f}")
-
-# 📈 **Cumulative Net P&L Chart**
-st.subheader("📈 Cumulative Net P&L")
-fig_cum_pnl = px.line(
-    df_filtered, x="execution_time_sell", y="cumulative_pnl",
-    title="Cumulative Net P&L",
-    labels={"execution_time_sell": "Date", "cumulative_pnl": "Cumulative P&L ($)"},
-    line_shape="spline"
-)
-fig_cum_pnl.update_xaxes(title_text="Date", tickformat="%Y-%m-%d", tickangle=-45)
-st.plotly_chart(fig_cum_pnl, use_container_width=True)
-
-# 📊 **Average Net P&L by Weekday**
-st.subheader("📊 Average Net P&L by Weekday")
-fig_avg_pnl_weekday = px.bar(
-    avg_pnl_by_weekday, x="weekday", y="average_daily_pnl",
-    title="Average Daily Net P&L by Weekday",
-    labels={"weekday": "Weekday", "average_daily_pnl": "Avg Daily Net P&L ($)"},
-    text_auto=True, color="average_daily_pnl"
-)
-st.plotly_chart(fig_avg_pnl_weekday, use_container_width=True)
-
-# 📊 **Average Net P&L by Asset Symbol**
-st.subheader("📊 Average Net P&L by Asset Symbol")
-fig_avg_pnl_symbol = px.bar(
-    avg_pnl_by_symbol, x="symbol", y="net_pnl", 
-    title="Average Net P&L by Asset Symbol",
-    labels={"symbol": "Asset Symbol", "net_pnl": "Avg Net P&L ($)"},
-    text_auto=True, color="net_pnl"
-)
-st.plotly_chart(fig_avg_pnl_symbol, use_container_width=True)
-
-# 📋 **Trade Data Table**
-st.subheader("📋 Recent Trades")
-st.dataframe(
-    df_filtered[['execution_time_sell', 'symbol', 'net_pnl', 'cumulative_pnl', 'holding_period']]
-    .rename(columns={'execution_time_sell': 'Execution Date', 'net_pnl': 'Net P&L ($)', 'cumulative_pnl': 'Cum P&L ($)', 'holding_period': 'Holding (m)'})
-    .style.applymap(lambda x: 'background-color: red' if isinstance(x, (int, float)) and x < 0 else '', subset=['Net P&L ($)'])
+view = st.sidebar.radio(
+    "Select a view:",
+    ("Dashboard", "Trades", "Calendar", "Deep Learning Analysis", "Market Sentiment")  # Add more views here
 )
 
-####### Calculate total PL per subcategory
-pl_per_subcategory = df.groupby('subcategory')['net_pnl'].sum().reset_index()
-pl_per_subcategory = pl_per_subcategory.rename(columns={'net_pnl': 'Total P/L'})
 
-total_pl = pl_per_subcategory['Total P/L'].sum()
-total_row = pd.DataFrame({'subcategory': ['Total'], 'Total P/L': [total_pl]})
-pl_per_subcategory = pd.concat([pl_per_subcategory, total_row], ignore_index=True)
-pl_per_subcategory['Total P/L'] = pl_per_subcategory['Total P/L'].apply(lambda x: f"{x:.2f}" if isinstance(x, (int, float)) else x)
+# winrate, expectancy, profit factor, avg win hold, avg loss hold. avg loss, avg win, win streak, loss streak, top loss, top win, avg daily vol, avg size
 
-st.subheader("Total P/L per Subcategory")
-st.dataframe(pl_per_subcategory)
+if view == "Dashboard":
+    st.title("📊 Trade Performance Dashboard")
 
-####### DISPLAY WINNING AND LOSING TRADES
-df_copy = df.copy()
-df_copy['pnl_percent'] = ((df_copy['net_pnl'] / df_copy['price_buy']) * 100).replace([float('inf'), -float('inf')], 0)
-# Sort by net P/L to get top winners and losers
-trades_df_sorted = df_copy.sort_values('net_pnl', ascending=False)
+    a, b, c, d, e, f = st.columns(6)
+    g,h,i,j,k,l = st.columns(6)
 
-top_3_winners = trades_df_sorted.head(3)[['net_pnl', 'pnl_percent']]
-top_3_losers = trades_df_sorted.tail(3)[['net_pnl', 'pnl_percent']]
+    a.metric("Total wins", "21", "-9°F", border=True)
+    b.metric("Average win", "$374", "2 mph", border=True)
+    c.metric("Profit factor", "77%", "5%", border=True)
+    d.metric("Total losses", "6", "-2 inHg", border=True)
+    e.metric("Average loss", "$197", "2 mph", border=True)
+    f.metric("Average hold", "3 min", "5%", border=True)
 
-# Formatting
-for df_copy in [top_3_winners, top_3_losers]:
-    for col in df_copy.columns:
-        df_copy[col] = df_copy[col].apply(lambda x: f"{x:.2f}" if isinstance(x, (int, float)) else x)
+    g.metric("Total wins", "21", "-9°F", border=True)
+    h.metric("Average win", "$374", "2 mph", border=True)
+    i.metric("Profit factor", "77%", "5%", border=True)
+    j.metric("Total losses", "6", "-2 inHg", border=True)
+    k.metric("Average loss", "$197", "2 mph", border=True)
+    l.metric("Average hold", "3 min", "5%", border=True)
 
 
-st.subheader("Top 3 Winning Trades")
-st.dataframe(top_3_winners)
-st.dataframe(top_3_losers)
+    fig_cum_pnl = px.area(
+        df_filtered, x="execution_time_sell", y="cumulative_pnl"
+    )
 
-####### PERFORMANCE PER PERIOD
-# Get today's date
-today = pd.Timestamp.now().floor('D') # current time truncated to the start of the day
+    # Customize the chart (optional, but recommended for cleaner look)
+    fig_cum_pnl.update_xaxes(showgrid=False, title_text="", showticklabels=False)
+    fig_cum_pnl.update_yaxes(showgrid=False, title_text="")
 
-# Calculate start of week (Monday)
-start_of_week = today - pd.Timedelta(days=today.weekday())
+    # Optionally, fill the area with a specific color and opacity
+    fig_cum_pnl.update_traces(fillcolor="skyblue", opacity=0.7)  # Example color
 
-# Calculate start of month
-start_of_month = today.replace(day=1)
+    # Set the background color to white for better contrast (optional)
+    fig_cum_pnl.update_layout(plot_bgcolor='white')
 
-# Calculate start of year
-start_of_year = today.replace(month=1, day=1)
-
-# Filter and calculate total P/L for each period
-df.to_csv("output.csv", index=False)
-pl_today = df[df['execution_time_sell'] >= today]['net_pnl'].sum()
-pl_this_week = df[df['execution_time_sell'] >= start_of_week]['net_pnl'].sum()
-pl_this_month = df[df['execution_time_sell'] >= start_of_month]['net_pnl'].sum()
-pl_ytd = df[df['execution_time_sell'] >= start_of_year]['net_pnl'].sum()
+    st.plotly_chart(fig_cum_pnl, use_container_width=True)
 
 
-# Create a DataFrame for the results
-time_periods = ['Today', 'This Week', 'This Month', 'Year-to-Date']
-pl_values = [pl_today, pl_this_week, pl_this_month, pl_ytd]
+        # Sample data
+    data = {
+        'weekday': ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday'],
+        'average_daily_pnl': [150, -50, 200, 75, -100]
+    }
+    df = pd.DataFrame(data)
 
-pl_over_time = pd.DataFrame({'Time Period': time_periods, 'Total P/L': pl_values})
+    # Sorting weekdays in correct order
+    weekday_order = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday']
+    df['weekday'] = pd.Categorical(df['weekday'], categories=weekday_order, ordered=True)
+    df = df.sort_values('weekday')
 
-#Formatting
-pl_over_time['Total P/L'] = pl_over_time['Total P/L'].apply(lambda x: f"{x:.2f}" if isinstance(x, (int, float)) else x)
+    # Sample data for PnL per hour
+    hours = np.arange(0, 24)
+    pnl_per_hour = np.random.randint(-50, 100, size=24)
+
+    # Sample data for performance by asset name
+    assets_data = {
+    'symbol': ['AAPL', 'TSLA', 'GOOGL', 'AMZN', 'MSFT'],
+    'total_trades': [10, 15, 12, 8, 20],
+    'pnl': [500, -200, 300, -100, 600],
+    'pnl_percent': [5.0, -2.5, 3.0, -1.0, 6.0],
+    'weighted': [250, -150, 180, -50, 400]
+    }
+    assets_df = pd.DataFrame(assets_data)
+
+    # Sample data for performance by asset type
+    asset_type_data = {
+        'symbol': ['Tech', 'Auto', 'Tech', 'E-commerce', 'Tech'],
+        'total_trades': [30, 15, 25, 10, 35],
+        'pnl': [1400, -300, 900, -250, 1600],
+        'pnl_percent': [4.5, -1.5, 3.2, -2.0, 5.8],
+        'weighted': [700, -200, 500, -150, 900]
+    }
+    asset_type_df = pd.DataFrame(asset_type_data)
+
+    # Streamlit App
+    st.title("PnL Analysis")
+
+    # Average PnL per Weekday Bar Chart
+    st.subheader("Average PnL per Weekday")
+    fig, ax = plt.subplots()
+    ax.barh(df['weekday'], df['average_daily_pnl'], color=['green' if x > 0 else 'red' for x in df['average_daily_pnl']])
+    ax.set_ylabel('Weekday')
+    ax.set_xlabel('Average P&L')
+    ax.set_title('Average P&L per Weekday')
+    ax.axvline(0, color='black', linewidth=0.8)
+    st.pyplot(fig)
+
+    # Average PnL per Hour Bar Chart
+    st.subheader("Average PnL per Hour")
+    fig, ax = plt.subplots()
+    ax.barh(hours, pnl_per_hour, color=['green' if x > 0 else 'red' for x in pnl_per_hour])
+    ax.set_ylabel('Hour of the Day')
+    ax.set_xlabel('Average P&L')
+    ax.set_title('Average P&L per Hour')
+    ax.axvline(0, color='black', linewidth=0.8)
+    ax.set_yticks(hours)
+    ax.set_yticklabels([str(h) for h in hours])
+    st.pyplot(fig)
+
+        # Performance by Asset Name Table
+    st.subheader("Performance by Asset Name")
+    st.dataframe(assets_df)
+
+    # Performance by Asset Type Table
+    st.subheader("Performance by Asset Type")
+    st.dataframe(asset_type_df)
 
 
-st.subheader("Total P/L Over Time")
-st.dataframe(pl_over_time)
 
 
-####### CONSECUTIVE PERFORMANCE
 
-def calculate_consecutive(series):
-    """Calculates max consecutive wins/losses and profit/loss, along with trade counts."""
-    wins = 0
-    losses = 0
-    max_wins = 0
-    max_losses = 0
-    max_wins_trades = 0  # Track trades during max win streak
-    max_losses_trades = 0  # Track trades during max loss streak
-    consecutive_profits = []
-    consecutive_losses = []
-    current_profit_streak = 0
-    current_loss_streak = 0
-    max_consecutive_profit = 0
-    max_consecutive_loss = 0
+elif view == "Trades":
+    df = pd.DataFrame(
+        {
+            "name": ["Roadmap", "Extras", "Issues"],
+            "url": ["https://roadmap.streamlit.app", "https://extras.streamlit.app", "https://issues.streamlit.app"],
+            "stars": [random.randint(0, 1000) for _ in range(3)],
+            "views_history": [[random.randint(0, 5000) for _ in range(30)] for _ in range(3)],
+        }
+    )
+    st.dataframe(
+        df,
+        column_config={
+            "name": "App name",
+            "stars": st.column_config.NumberColumn(
+                "Github Stars",
+                help="Number of stars on GitHub",
+                format="%d ⭐",
+            ),
+            "url": st.column_config.LinkColumn("App URL"),
+            "views_history": st.column_config.LineChartColumn(
+                "Views (past 30 days)", y_min=0, y_max=5000
+            ),
+        },
+        hide_index=True,
+    )
 
-    wins_trades = 0
-    losses_trades = 0
-    max_consecutive_profit_trades = 0
-    max_consecutive_loss_trades = 0
 
-    for i, pnl in enumerate(series):
-        if pnl > 0:
-            wins += 1
-            losses = 0  # Reset losses
-            wins_trades +=1
-            losses_trades = 0
-            current_profit_streak += pnl
-            current_loss_streak = 0 # reset loss streak
-            max_wins = max(max_wins, wins)
-            if max_wins == wins:
-                max_wins_trades = wins_trades
-            consecutive_profits.append(current_profit_streak)
-            max_consecutive_profit = max(max_consecutive_profit, current_profit_streak)
-            if max_consecutive_profit == current_profit_streak:
-                max_consecutive_profit_trades = wins_trades
+    # 📋 **Trade Data Table**
+    df_filtered['TradeDate'] = df_filtered['execution_time_sell'].dt.date
+    df_filtered['Result'] = np.where(df_filtered['net_pnl'] > 0, 'Win', 'Lose')  # Handles 0 as Lose
+    df_filtered['net_pnl_percentage'] = (df_filtered['net_pnl'] / df_filtered['price_buy']) * 100
 
-        elif pnl < 0:
-            losses += 1
-            wins = 0  # Reset wins
-            losses_trades +=1
-            wins_trades = 0
-            current_loss_streak += pnl
-            current_profit_streak = 0 # reset profit streak
-            max_losses = max(max_losses, losses)
-            if max_losses == losses:
-                max_losses_trades = losses_trades
-            consecutive_losses.append(current_loss_streak)
-            max_consecutive_loss = min(max_consecutive_loss, current_loss_streak) # min because loss is negative
-            if max_consecutive_loss == current_loss_streak:
-                max_consecutive_loss_trades = losses_trades
+    # Define styling function for the "Result" column
+    def highlight_result(val):
+        color = "green" if val == "Win" else "red"
+        return f'background-color: {color}; color: white; font-weight: bold;'
+
+    # Format and style DataFrame
+    styled_df = (
+        df_filtered[['TradeDate', 'symbol', 'Result', 'subcategory', 'shares', 'price_buy', 'price_sell', 'net_pnl', 'net_pnl_percentage', 'holding_period']]
+        .rename(columns={'TradeDate': 'Date', 'subcategory': 'OPT', 'net_pnl': 'Net P&L ($)', 'holding_period': 'Holding (m)', 'net_pnl_percentage': 'Net P&L (%)'})
+        .style
+        .format({'price_buy': '{:.2f}', 'price_sell': '{:.2f}', 'Net P&L ($)': '{:.2f}', 'Net P&L (%)': '{:.0f}', 'Holding (m)': '{:.0f}'})
+        .applymap(lambda x: 'background-color: red' if isinstance(x, (int, float)) and x < 0 else '', subset=['Net P&L ($)'])  # Apply PnL highlighting
+        .applymap(highlight_result, subset=['Result'])  # Apply conditional formatting to Result column
+        .set_table_styles([
+            {'selector': 'th', 'props': [('background-color', '#4CAF50'), ('color', 'white'), ('font-size', '16px'), ('text-align', 'center')]},  # Green header
+            {'selector': 'td', 'props': [('font-size', '14px')]}  # Larger text
+        ])
+        .set_table_attributes("style='display:inline'") 
+    )
+
+    # Display in Streamlit
+    st.dataframe(styled_df,hide_index=True)
+
+
+elif view == "Calendar":
+    st.title("PnL Calendar Dashboard")
+    col1, col2, col3 = st.columns(3)
+    col1.metric("Total PNL Year", "70 °F", "1.2 °F")
+    col2.metric("Total PNL Month", "9 mph", "-8%")
+    col3.metric("Humidity", "86%", "4%")
+
+
+    def generate_sample_data(days=365):
+        today = datetime.now()
+        dates = [today - timedelta(days=i) for i in range(days)]
+        pnl = np.random.uniform(-500, 500, days)  # Random PnL values
+        return pd.DataFrame({'Date': dates, 'PnL': pnl})
+
+    # Load sample data
+    df = generate_sample_data()
+    df['Date'] = pd.to_datetime(df['Date'])
+    df.set_index('Date', inplace=True)
+
+    # Streamlit UI
+
+    st.write("This dashboard displays the total PnL per day in a calendar format.")
+
+    # Month navigation
+    selected_month = st.slider("Select Month", 1, 12, datetime.now().month)
+    selected_year = st.slider("Select Year", df.index.year.min(), df.index.year.max(), datetime.now().year)
+
+    # Filter data by selected month and year
+    filtered_df = df[(df.index.month == selected_month) & (df.index.year == selected_year)]
+
+    def create_calendar_heatmap(data):
+        if data.empty:
+            st.warning("No data available for the selected month and year.")
+            return None
+        fig = calplot.calplot(data['PnL'], cmap='RdYlGn', colorbar=True)
+        return fig[0]  # calplot returns a tuple (fig, axes), we only need fig
+
+    # Display heatmap
+    fig = create_calendar_heatmap(filtered_df)
+    if fig:
+        st.pyplot(fig)
+
+    # Load sample data
+    df = generate_sample_data()
+    df['Date'] = pd.to_datetime(df['Date'])
+    df.set_index('Date', inplace=True)
+
+    # Sidebar for navigation
+    st.sidebar.header("Filter Options")
+    selected_year = st.sidebar.selectbox("Select Year", sorted(df.index.year.unique()), index=0)
+    selected_month = st.sidebar.selectbox("Select Month", range(1, 13), index=datetime.now().month - 1, format_func=lambda x: datetime(2000, x, 1).strftime('%B'))
+
+    # Filter data by selected month and year
+    filtered_df = df[(df.index.month == selected_month) & (df.index.year == selected_year)]
+
+    # Convert data to events format for streamlit-calendar
+    events = [
+        {
+            "title": f"PnL: {round(row.PnL, 2)}",
+            "start": row.Index.strftime("%Y-%m-%d"),
+            "backgroundColor": "#FF4B4B" if row.PnL < 0 else "#3DD56D",
+            "borderColor": "#FF4B4B" if row.PnL < 0 else "#3DD56D",
+        }
+        for row in filtered_df.itertuples()
+    ]
+
+    # Display interactive calendar
+    calendar(events=events, options={"initialView": "dayGridMonth"}, key="pnl_calendar")
+
+    # Show raw data
+    if st.checkbox("Show Raw Data"):
+        st.dataframe(df.reset_index())
+
+
+elif view == "Deep Learning Analysis":
+    # Generate synthetic trade data
+    def generate_trade_data(n=200):
+        np.random.seed(42)
+        profit_loss = np.random.normal(loc=0, scale=10, size=n)
+        duration = np.random.normal(loc=50, scale=20, size=n)
+        volatility = np.random.normal(loc=2, scale=1, size=n)
+        df = pd.DataFrame({'Profit/Loss (%)': profit_loss, 'Duration (mins)': duration, 'Volatility': volatility})
+        return df
+
+    # Perform clustering
+    def apply_kmeans(df, n_clusters=2):
+        scaler = StandardScaler()
+        scaled_data = scaler.fit_transform(df)
+        kmeans = KMeans(n_clusters=n_clusters, random_state=42, n_init=10)
+        df['Cluster'] = kmeans.fit_predict(scaled_data)
+        return df, kmeans
+
+    # Streamlit UI
+    st.title('Trade Clustering with K-Means')
+    st.sidebar.header('Settings')
+    n_clusters = st.sidebar.slider('Number of Clusters', min_value=2, max_value=5, value=2)
+
+    df = generate_trade_data()
+    df, model = apply_kmeans(df, n_clusters)
+
+    st.dataframe(df.head())
+
+    # Compute cluster characteristics
+    cluster_means = df.groupby('Cluster').mean()
+    st.write(cluster_means)
+
+    # Assign meaning based on cluster properties
+    cluster_labels = {}
+    for cluster in df['Cluster'].unique():
+        mean_profit = cluster_means.loc[cluster, 'Profit/Loss (%)']
+        mean_duration = cluster_means.loc[cluster, 'Duration (mins)']
+        mean_volatility = cluster_means.loc[cluster, 'Volatility']
+        
+        if mean_profit > 5 and mean_duration > 40:
+            label = "High-Performing Trades"
+        elif mean_profit < -5 and mean_volatility > 2.5:
+            label = "High-Risk Unsuccessful Trades"
+        elif mean_profit < -5:
+            label = "Unsuccessful Trades"
+        elif mean_duration > 60:
+            label = "Long-Term Moderate Trades"
         else:
-            wins = 0
-            losses = 0
-            wins_trades = 0
-            losses_trades = 0
-            current_profit_streak = 0
-            current_loss_streak = 0
+            label = "Steady Performers"
+        
+        cluster_labels[cluster] = label
 
-    return max_wins, max_losses, max_wins_trades, max_losses_trades, max_consecutive_profit, max_consecutive_loss, max_consecutive_profit_trades, max_consecutive_loss_trades
+    df['Cluster Label'] = df['Cluster'].map(cluster_labels)
 
-# Calculate metrics
-total_trades = len(df)
-net_pl = df['net_pnl'].sum()
-max_drawdown = df['net_pnl'].cumsum().min()
-max_wins, max_losses, max_wins_trades, max_losses_trades, max_consecutive_profit, max_consecutive_loss, max_consecutive_profit_trades, max_consecutive_loss_trades = calculate_consecutive(df['net_pnl'])
+    st.write("## Cluster Interpretation")
+    st.dataframe(df[['Cluster', 'Cluster Label']].drop_duplicates())
 
-# Create the metrics DataFrame
-metrics_data = {
-    'Metric': ['Max Drawdown', 'Consecutive Wins', 'Consecutive Losses', 'Max Consecutive Profit', 'Max Consecutive Loss'],
-    'Value': [max_drawdown, max_wins, max_losses, max_consecutive_profit, max_consecutive_loss],
-    'Total Trades': ['', max_wins_trades, max_losses_trades, max_consecutive_profit_trades, max_consecutive_loss_trades] # Add trade counts
-}
-metrics_df = pd.DataFrame(metrics_data)
-
-# Formatting
-metrics_df['Value'] = metrics_df['Value'].apply(lambda x: f"{x:.2f}" if isinstance(x, (int, float)) else x)
-
-st.dataframe(metrics_df)
-
-
-####### DURATION PERFORMANCE
-df_copy = df.copy()
-
-# Convert execution times to datetime if they aren't already
-df_copy['execution_time_buy'] = pd.to_datetime(df_copy['execution_time_buy'])
-df_copy['execution_time_sell'] = pd.to_datetime(df_copy['execution_time_sell'])
-
-
-# Calculate trade duration
-df_copy['duration'] = (df_copy['execution_time_sell'] - df_copy['execution_time_buy']).dt.total_seconds() / 3600  # In hours
-
-# Separate winning and losing trades
-winning_trades = df_copy[df_copy['net_pnl'] > 0]
-losing_trades = df_copy[df_copy['net_pnl'] < 0]
-
-# Calculate average durations
-avg_duration_all = df_copy['duration'].mean()
-avg_duration_wins = winning_trades['duration'].mean() if len(winning_trades) > 0 else 0 # Handle cases where there are no winning trades
-avg_duration_losses = losing_trades['duration'].mean() if len(losing_trades) > 0 else 0 # Handle cases where there are no losing trades
-
-
-# Create the duration DataFrame
-duration_data = {
-    'Trade Type': ['Winning Trades', 'Losing Trades', 'All Trades'],
-    'Average Duration (Hours)': [avg_duration_wins, avg_duration_losses, avg_duration_all]
-}
-duration_df = pd.DataFrame(duration_data)
-
-# Formatting
-duration_df['Average Duration (Hours)'] = duration_df['Average Duration (Hours)'].apply(lambda x: f"{x:.2f}" if isinstance(x, (int, float)) else x)
-
-st.subheader("Average Trade Duration")
-st.dataframe(duration_df)
+    # Plot clustering results
+    fig, ax = plt.subplots()
+    scatter = ax.scatter(df['Profit/Loss (%)'], df['Duration (mins)'], c=df['Cluster'], cmap='viridis', alpha=0.7)
+    ax.set_xlabel('Profit/Loss (%)')
+    ax.set_ylabel('Duration (mins)')
+    ax.set_title('Trade Clustering')
+    plt.colorbar(scatter, label='Cluster')
+    st.pyplot(fig)
 
 
 
-####### MONEY MANAGEMENT
 
-def calculate_kelly_criterion(win_rate, avg_win_loss_ratio):
-    """Calculates the Kelly Criterion."""
-    if avg_win_loss_ratio == 0 or win_rate == 0: # avoid division by zero
-        return 0
-    kelly_fraction = (win_rate * (avg_win_loss_ratio + 1) - 1) / avg_win_loss_ratio
-    return max(0, min(1, kelly_fraction))  # Ensure kelly_fraction is between 0 and 1
+elif view == "Market Sentiment":
+    st.title("Sentiment Analysis with NLP")
+    a, b, c = st.columns(3)
+    d, e, f = st.columns(3)
 
-def calculate_position_size(account_size, kelly_fraction, price_buy, risk_per_trade_percent):
-    """Calculates the position size in shares."""
-    if price_buy == 0: # avoid division by zero
-        return 0
-    position_size_shares = (account_size * kelly_fraction) / price_buy
-    return position_size_shares
-
-# Calculate metrics (replace with your actual account size)
-account_size = 10000  # Example account size
-win_rate = (df['net_pnl'] > 0).sum() / len(df) if len(df) > 0 else 0
-avg_win_loss_ratio = abs(df[df['net_pnl'] > 0]['net_pnl'].mean() / df[df['net_pnl'] < 0]['net_pnl'].mean()) if len(df[df['net_pnl'] > 0]) > 0 and len(df[df['net_pnl'] < 0]) > 0 else 0
-
-kelly_criterion = calculate_kelly_criterion(win_rate, avg_win_loss_ratio)
-# Assume price_buy is the entry price of the next trade, you'll need to fetch this dynamically
-# For demonstration, I'm using the mean of price_buy. You'll have to change this.
-average_price_buy = df['price_buy'].mean() if len(df) > 0 else 0
-position_size = calculate_position_size(account_size, kelly_criterion, average_price_buy, risk_per_trade_percent=0.01)
-
-# Create the money management DataFrame
-money_management_data = {
-    'Metric': ['Kelly Criterion', 'Position Size (Shares)'],
-    'Value': [kelly_criterion, position_size]
-}
-money_management_df = pd.DataFrame(money_management_data)
-
-# Formatting
-money_management_df['Value'] = money_management_df['Value'].apply(lambda x: f"{x:.2f}" if isinstance(x, (int, float)) else x)
-
-st.subheader("Money Management")
-st.dataframe(money_management_df)
+    a.metric("This Week", "Trending", "-9°F", border=True)
+    b.metric("This Month", "Sideways", "2 mph", border=True)
+    c.metric("This Year", "Sideways", "5%", border=True)
 
 
+    def convert_to_cumulative_returns(values):
+        returns = (values[1:] - values[:-1]) / values[:-1]
+        cum_returns = np.cumsum(returns, axis=0)
+        return np.vstack([[0]*values.shape[1], cum_returns]) * 100
 
-####### RISK/RETURN METRICS
-avg_return_wins = winning_trades['net_pnl'].mean() if len(winning_trades) > 0 else 0
-avg_risk_wins = winning_trades['net_pnl'].std() if len(winning_trades) > 0 else 0  # Risk is standard deviation
-avg_return_losses = losing_trades['net_pnl'].mean() if len(losing_trades) > 0 else 0
-avg_risk_losses = losing_trades['net_pnl'].std() if len(losing_trades) > 0 else 0
+    PORTFOLIOS = {
+        'Tech Stocks': ['Apple', 'Microsoft', 'Google', 'Amazon', 'Facebook'],
+        'Emerging Markets': ['Tencent', 'Alibaba', 'Samsung', 'Baidu', 'Xiaomi'],
+        'Green Energy Assets': ['Tesla', 'NIO', 'Plug Power', 'First Solar', 'Enphase Energy']
+    }
 
-# All Trades
-avg_return_all = df['net_pnl'].mean()
-avg_risk_all = df['net_pnl'].std()
+    DATE_RANGE = pd.date_range(start="2021-01-01", end="2021-12-31", freq='B')
+    ASSET_VALUES = np.random.rand(len(DATE_RANGE), 5) * 1000
 
-# Expected Return (assuming historical win rate is a good predictor)
-win_rate = (df['net_pnl'] > 0).sum() / len(df) if len(df) > 0 else 0
-expected_return = (win_rate * avg_return_wins) + ((1 - win_rate) * avg_return_losses)
+    portfolio_selected = "Tech Stocks"
+    date_range = DATE_RANGE[-1]
 
-
-# Create the risk/return DataFrame
-risk_return_data = {
-    'Trade Type': ['Winning Trades', 'Losing Trades', 'All Trades', 'Expected'],
-    'Average Return': [avg_return_wins, avg_return_losses, avg_return_all, expected_return],
-    'Average Risk (Standard Deviation)': [avg_risk_wins, avg_risk_losses, avg_risk_all, '']  # Risk for expected return is not usually calculated this way
-}
-risk_return_df = pd.DataFrame(risk_return_data)
-
-# Formatting
-for col in ['Average Return', 'Average Risk (Standard Deviation)']:
-    if col in risk_return_df.columns:
-        risk_return_df[col] = risk_return_df[col].apply(lambda x: f"{x:.2f}" if isinstance(x, (int, float)) else x)
+    NEWS_ITEMS = ["Positive news about Apple", "Google faces regulatory challenges", "Amazon grows in Europe", "Facebook under scrutiny", "Microsoft announces new partnership"]
+    SENTIMENTS = ['positive', 'neutral', 'negative']
 
 
-st.subheader("Risk/Return Metrics")
-st.dataframe(risk_return_df)
+    news_df = pd.DataFrame({
+        'Headline': NEWS_ITEMS,
+        'Sentiment': np.random.choice(SENTIMENTS, 5)
+    })
+    st.write(news_df)
+
+    wordcloud_data = {
+        'Apple': 50,
+        'Google': 30,
+        'Regulatory': 25,
+        'Europe': 20,
+        'Partnership': 15,
+        'Growth': 10,
+        'Batteries': 45,
+        'Large Language Model': 40,
+        'Dodge and Cox': 60,
+        'Innovation': 35,
+        'E-commerce': 28,
+        'Blockchain': 33,
+        'AI': 50,
+        'Sustainability': 24,
+        'Data Privacy': 32,
+        'Fintech': 27,
+        'Cloud Computing': 38,
+        'Digital Transformation': 29,
+        '5G': 31,
+        'Machine Learning': 34
+    }
+
+    wc = WordCloud(width=800, height=400, background_color='white').generate_from_frequencies(wordcloud_data)
+   
+    fig, ax = plt.subplots(figsize=(10, 5))
+    ax.imshow(wc, interpolation='bilinear')
+    ax.axis('off')
+    st.pyplot(fig)

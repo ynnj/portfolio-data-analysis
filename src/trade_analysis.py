@@ -2,10 +2,20 @@ import sqlite3
 import pandas as pd
 import numpy as np
 import os
+import argparse
+
+# Argument parsing to select database
+parser = argparse.ArgumentParser(description="Process transactions for a specific account.")
+parser.add_argument("account_type", choices=["real", "paper"], help="Specify which account to process: real or paper")
+args = parser.parse_args()
+
+# Select database based on the argument
+DB_NAME = "real_all_transactions.db" if args.account_type == "real" else "paper_all_transactions.db"
+
 
 # Connect to SQLite
-DB_PATH = os.path.join(os.path.dirname(__file__), "../data/real_all_transactions.db")
-conn = sqlite3.connect(DB_PATH)
+# DB_PATH = os.path.join(os.path.dirname(__file__), "../data/real_all_transactions.db")
+conn = sqlite3.connect(DB_NAME)
 cursor = conn.cursor()
 
 # Load merged trade data

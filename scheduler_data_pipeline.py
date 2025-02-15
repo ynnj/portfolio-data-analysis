@@ -15,12 +15,12 @@ def run_pipeline(account_type):
     print(f"📥 Running get_transactions.py for {account_type}...")
     subprocess.run(["python3", GET_TRANSACTIONS_SCRIPT, account_type])
 
-    # Step 2: Process transactions
-    print(f"🔄 Running process_transactions.py for {account_type}...")
+    # # Step 2: Process transactions
+    # print(f"🔄 Running process_transactions.py for {account_type}...")
     subprocess.run(["python3", PROCESS_TRANSACTIONS_SCRIPT, account_type])
 
-    print(f"✅ Data pipeline run complete for {account_type.upper()}.\n")
+    # print(f"✅ Data pipeline run complete for {account_type.upper()}.\n")
 
 # Run for both REAL and PAPER accounts
 run_pipeline("real")
-run_pipeline("paper")
+# run_pipeline("paper")
