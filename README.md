@@ -33,15 +33,8 @@ Streamlit Cloud deployment: https://portfolio-dashboard-example-scott-morgan.str
 - **Data Sources** (Alpaca, IBKR, Yahoo Finance, Quandl)  
 - **Database** (SQLite/PostgreSQL)  
 - **Dashboard** (Streamlit, Dash, Flask with D3.js)  
-- **Jupyter Notebook** (for analysis & reporting)  
-
-This project can serve as a **resume highlight** because it demonstrates:  
-✅ **Financial domain knowledge** (trading strategies & risk analysis)  
-✅ **Data engineering** (fetching, storing, processing trade data)  
-✅ **Data science & ML** (if you add predictive modeling)  
-✅ **Dashboarding & storytelling** (via visualizations & reports)  
-
-Would you like help getting started with the initial data pipeline? 🚀
+- **Jupyter Notebook** (for analysis & reporting)
+  
 ---
 
 ### **📂 Project Structure**
