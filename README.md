@@ -1,7 +1,13 @@
-# portfolio-data-analysis
-**Trade Performance and Risk Analysis Dashboard** that tracks and analyzes your trades. This project can showcase skills in **data collection, analysis, visualization, and machine learning** while directly relating to your domain expertise.  
+# Portfolio Data Analysis Dashboard
+Trade Performance and Risk Analysis Dashboard that tracks and analyzes your trades. 
+This project features **data collection, analysis, visualization, and machine learning**.
 
-### **Project Breakdown**  
+**Demo** 🚀  
+Streamlit Cloud deployment: https://portfolio-dashboard-example-scott-morgan.streamlit.app/
+
+---
+
+### **Features**  
 #### 1. **Data Collection**  
    - Pull real-time or historical options data using an API (e.g., Alpaca, Interactive Brokers, Yahoo Finance).  
    - Log your trades automatically using broker APIs or manually input trades into a database (SQLite/PostgreSQL).  
@@ -22,20 +28,14 @@
    - Predict future performance based on past trading behavior.  
    - Clustering strategies (e.g., k-means to segment successful vs. unsuccessful trades).  
 
+---
 ### **Tech Stack**  
 - **Python** (Pandas, NumPy, Scikit-Learn, Matplotlib/Plotly)  
 - **Data Sources** (Alpaca, IBKR, Yahoo Finance, Quandl)  
 - **Database** (SQLite/PostgreSQL)  
 - **Dashboard** (Streamlit, Dash, Flask with D3.js)  
-- **Jupyter Notebook** (for analysis & reporting)  
-
-This project can serve as a **resume highlight** because it demonstrates:  
-✅ **Financial domain knowledge** (trading strategies & risk analysis)  
-✅ **Data engineering** (fetching, storing, processing trade data)  
-✅ **Data science & ML** (if you add predictive modeling)  
-✅ **Dashboarding & storytelling** (via visualizations & reports)  
-
-Would you like help getting started with the initial data pipeline? 🚀
+- **Jupyter Notebook** (for analysis & reporting)
+  
 ---
 
 ### **📂 Project Structure**
@@ -79,19 +79,3 @@ Would you like help getting started with the initial data pipeline? 🚀
     ├── test_ml_model.py
 ```
 
----
-
-### **Key Features**
-✅ **Modular & Scalable** → Organized for easy expansion (add new features later).  
-✅ **Reproducible** → Jupyter Notebooks track step-by-step analysis.  
-✅ **Automated Testing** → Unit tests ensure reliability.  
-✅ **Dashboard for Visualization** → Shows performance & risk metrics interactively.  
-✅ **Backtesting & ML Potential** → Optional predictive trade classification.  
-
----
-
-### **Next Steps** 🚀  
-1️⃣ **Set up your repo on GitHub** (`options-trading-analysis`).  
-2️⃣ **Start with data collection** → Fetch trade data via API or CSV logs.  
-3️⃣ **Build a simple analysis script** → Compute basic performance metrics.  
-4️⃣ **Expand with EDA, backtesting, and visualization**.  
