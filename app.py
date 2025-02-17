@@ -3,9 +3,8 @@ import subprocess
 import time
 
 
-# Define the paths to your scripts inside the "data" folder
 SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
-SRC_DIR = os.path.join(SCRIPT_DIR, "src")  # Path to the "data" folder
+SRC_DIR = os.path.join(SCRIPT_DIR, "src")  
 
 GET_STATS_SCRIPT = os.path.join(SRC_DIR, "trade_analysis.py")
 

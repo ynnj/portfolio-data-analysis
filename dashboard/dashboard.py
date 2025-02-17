@@ -21,16 +21,36 @@ import requests
 from bs4 import BeautifulSoup
 from yahoo_fin import stock_info as si
 from vaderSentiment.vaderSentiment import SentimentIntensityAnalyzer
-
-
+from src.get_metrics import *
+from . import db_utils  
 
 # Ensure Python recognizes "src" as a package
-SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))  # dashboard/
-PROJECT_ROOT = os.path.dirname(SCRIPT_DIR)  # my_project/
-sys.path.append(PROJECT_ROOT)
+# SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))  # dashboard/
+# PROJECT_ROOT = os.path.dirname(SCRIPT_DIR)  # my_project/
+# sys.path.append(PROJECT_ROOT)
 
-# Now import correctly
-from src.get_metrics import *
+# Connect to SQLite
+# DB_PATH = os.path.join(os.path.dirname(__file__), "real_all_transactions.db")
+# conn = sqlite3.connect("paper_all_transactions.db")
+
+# # Load Metrics (Latest Snapshot)
+# metrics = pd.read_sql("SELECT * FROM trade_metrics ORDER BY date DESC LIMIT 1", conn)
+# df = pd.read_sql("SELECT * FROM merged_trades", conn)
+# conn.close()
+
+# # Ensure data exists
+# if df.empty or metrics.empty:
+#     st.warning("⚠️ No trade data found.")
+#     st.stop()
+
+# Load data and metrics
+metrics = db_utils.fetch_data("SELECT * FROM trade_metrics ORDER BY date DESC LIMIT 1")
+df = db_utils.fetch_data("SELECT * FROM merged_trades")
+
+# Ensure data exists (check both metrics and df)
+if df is None or df.empty or metrics is None or metrics.empty:  # Check for None as well
+    st.warning("⚠️ No trade data found.")
+    st.stop()  # Stop execution if no data
 
 
 
@@ -70,20 +90,6 @@ st.markdown(
     unsafe_allow_html=True
 )
 
-# Connect to SQLite
-# DB_PATH = os.path.join(os.path.dirname(__file__), "real_all_transactions.db")
-conn = sqlite3.connect("paper_all_transactions.db")
-
-# Load Metrics (Latest Snapshot)
-metrics = pd.read_sql("SELECT * FROM trade_metrics ORDER BY date DESC LIMIT 1", conn)
-df = pd.read_sql("SELECT * FROM merged_trades", conn)
-conn.close()
-
-# Ensure data exists
-if df.empty or metrics.empty:
-    st.warning("⚠️ No trade data found.")
-    st.stop()
-
 # Convert datetime columns
 df['execution_time_sell'] = pd.to_datetime(df['execution_time_sell'])
 df = df.sort_values(by="execution_time_sell")
@@ -111,15 +117,6 @@ avg_pnl_by_symbol = avg_pnl_by_symbol.sort_values(by="net_pnl", ascending=False)
 df['cumulative_pnl'] = df['net_pnl'].cumsum()
 latest_metrics = metrics.iloc[0]
 
-
-
-# Sidebar filters
-# st.sidebar.header("🔍 Filters")
-# selected_symbols = st.sidebar.multiselect("Select Asset Symbols", df['symbol'].unique(), default=df['symbol'].unique())
-# date_range = st.sidebar.date_input("Select Date Range", [df['trade_date'].min(), df['trade_date'].max()])
-
-# # Apply filters
-# df_filtered = df[(df['symbol'].isin(selected_symbols)) & (df['trade_date'].between(date_range[0], date_range[1]))]
 df_filtered=df.copy()
 
 # Sidebar Key Metrics
@@ -133,8 +130,6 @@ view = st.sidebar.radio(
     ("Dashboard", "Trades", "Trade Analysis", "Market Sentiment [WIP]")  # Add more views here
 )
 
-
-# winrate, expectancy, profit factor, avg win hold, avg loss hold. avg loss, avg win, win streak, loss streak, top loss, top win, avg daily vol, avg size
 
 if view == "Dashboard":
     st.title("📊 Trade Performance Dashboard")

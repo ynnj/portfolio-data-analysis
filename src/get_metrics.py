@@ -1,16 +1,37 @@
 import pandas as pd
 import sqlite3
 import os
+import boto3
+import tempfile
 
-# # Argument parsing to select database
-# parser = argparse.ArgumentParser(description="Process transactions for a specific account.")
-# parser.add_argument("account_type", choices=["real", "paper"], help="Specify which account to process: real or paper")
-# args = parser.parse_args()
+# DB_PATH = os.path.join(os.path.dirname(__file__), "../paper_all_transactions.db")
 
-# # Select database based on the argument
-# DB_NAME = "real_all_transactions.db" if args.account_type == "real" else "paper_all_transactions.db"
+# 1. Configure S3 (using Streamlit Secrets)
+AWS_ACCESS_KEY_ID = st.secrets["AWS_ACCESS_KEY_ID"]
+AWS_SECRET_ACCESS_KEY = st.secrets["AWS_SECRET_ACCESS_KEY"]
+BUCKET_NAME = st.secrets["BUCKET_NAME"]
+DB_FILE_NAME_IN_S3 = "paper_all_transactions.db"  # Or your database file name
 
-DB_PATH = os.path.join(os.path.dirname(__file__), "../paper_all_transactions.db")
+# 2. Function to download from S3
+def download_db_from_s3(bucket_name, s3_file_name):
+    """Downloads a file from S3 to a temporary file."""
+    try:
+        s3 = boto3.client(
+            "s3",
+            aws_access_key_id=AWS_ACCESS_KEY_ID,
+            aws_secret_access_key=AWS_SECRET_ACCESS_KEY,
+        )
+
+        with tempfile.NamedTemporaryFile(delete=False, suffix=".db") as tmp_file:
+            s3.download_file(bucket_name, s3_file_name, tmp_file.name)
+            tmp_file_path = tmp_file.name
+        return tmp_file_path
+
+    except Exception as e:
+        st.error(f"Error downloading database: {e}")
+        return None
+
+
 
 def load_data():
     """Loads trade data and metrics from the database."""
