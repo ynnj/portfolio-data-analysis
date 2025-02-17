@@ -6,10 +6,10 @@ import os
 import boto3
 import tempfile
 
-# 1. Configure S3 (using Streamlit Secrets)
+# 1. Configure S3 (using Streamlit Secrets) test
 AWS_ACCESS_KEY_ID = st.secrets.get("AWS_ACCESS_KEY_ID")
 AWS_SECRET_ACCESS_KEY = st.secrets.get("AWS_SECRET_ACCESS_KEY")
-BUCKET_NAME = st.secrets.get("BUCKET_NAME")
+BUCKET_NAME = st.secrets.get("AWS_BUCKET_NAME")
 DB_FILE_NAME_IN_S3 = "paper_all_transactions.db"  # Replace with your actual file name
 
 # 2. Function to download from S3
