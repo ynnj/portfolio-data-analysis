@@ -1,9 +1,7 @@
-unode_modules/
 .env
 uploads/
 option-trading-analysis.xlsx
 Transactions_Check.xlsx
-data/paper_all_transactions.db
 real_all_transactions.db
 paper_all_transactions.db
 trades.csv
