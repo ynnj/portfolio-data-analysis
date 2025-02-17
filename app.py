@@ -23,10 +23,7 @@ def run_pipeline(account_type):
 
 # Run for both REAL and PAPER accounts
 run_pipeline("real")
-# run_pipeline("paper")
+run_pipeline("paper")
 
 subprocess.run(["streamlit", "run", "dashboard/dashboard.py"])
 
-
-# ✅ News sentiment (Optional): Use NLP to analyze financial news
-# ✅ Volatility regime: Is this in a low/high volatility market?
