@@ -2,9 +2,6 @@
 Trade Performance and Risk Analysis Dashboard that tracks and analyzes your trades. 
 This project features **data collection, analysis, visualization, and machine learning**.
 
-**Demo** 🚀  
-Streamlit Cloud deployment: https://portfolio-dashboard-example-scott-morgan.streamlit.app/
-
 ---
 
 ### **Features**  
