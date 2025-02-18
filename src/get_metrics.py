@@ -1,45 +1,10 @@
 import pandas as pd
 import sqlite3
 import os
-import boto3
 import tempfile
 
-# DB_PATH = os.path.join(os.path.dirname(__file__), "../paper_all_transactions.db")
 
-# 1. Configure S3 (using Streamlit Secrets)
-AWS_ACCESS_KEY_ID = st.secrets["AWS_ACCESS_KEY_ID"]
-AWS_SECRET_ACCESS_KEY = st.secrets["AWS_SECRET_ACCESS_KEY"]
-BUCKET_NAME = st.secrets["BUCKET_NAME"]
-DB_FILE_NAME_IN_S3 = "paper_all_transactions.db"  # Or your database file name
-
-# 2. Function to download from S3
-def download_db_from_s3(bucket_name, s3_file_name):
-    """Downloads a file from S3 to a temporary file."""
-    try:
-        s3 = boto3.client(
-            "s3",
-            aws_access_key_id=AWS_ACCESS_KEY_ID,
-            aws_secret_access_key=AWS_SECRET_ACCESS_KEY,
-        )
-
-        with tempfile.NamedTemporaryFile(delete=False, suffix=".db") as tmp_file:
-            s3.download_file(bucket_name, s3_file_name, tmp_file.name)
-            tmp_file_path = tmp_file.name
-        return tmp_file_path
-
-    except Exception as e:
-        st.error(f"Error downloading database: {e}")
-        return None
-
-
-
-def load_data():
-    """Loads trade data and metrics from the database."""
-    conn = sqlite3.connect(DB_PATH)
-    metrics = pd.read_sql("SELECT * FROM trade_metrics ORDER BY date DESC LIMIT 1", conn)
-    df = pd.read_sql("SELECT * FROM merged_trades", conn)
-    conn.close()
-    
+def load_data(metrics,df):
     if df.empty or metrics.empty:
         raise ValueError("No trade data found.")
     
@@ -86,14 +51,6 @@ def calculate_pnl_by_symbol(df):
     grouped['weighted'] = grouped['total_trades'] / total_trades_sum
     print(grouped)
     return grouped
-
-# def calculate_total_pl_per_subcategory(df):
-#     """Computes total P&L per subcategory."""
-#     pl_per_subcategory = df.groupby('subcategory')['net_pnl'].sum().reset_index()
-#     pl_per_subcategory = pl_per_subcategory.rename(columns={'net_pnl': 'Total P/L'})
-#     total_pl = pl_per_subcategory['Total P/L'].sum()
-#     total_row = pd.DataFrame({'subcategory': ['Total'], 'Total P/L': [total_pl]})
-#     return pd.concat([pl_per_subcategory, total_row], ignore_index=True)
 
 def calculate_pnl_by_subcategory(df):
     """Computes total P&L per subcategory, including total trades, net P/L %, and weights."""
@@ -277,7 +234,7 @@ def calculate_top_loss(df):
 
 
 if __name__ == "__main__":
-    df, latest_metrics = load_data()
+    df, latest_metrics = load_data(db_path)
     print("Total Trades:", latest_metrics['total_trades'])
     print("Win Rate:", latest_metrics['win_rate'])
     print("Profit Factor:", latest_metrics['profit_factor'])
