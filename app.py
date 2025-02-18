@@ -20,7 +20,7 @@ except Exception as e:
 # Sidebar Navigation
 st.sidebar.header('📊 Key Metrics')
 dashboard.display_metrics_sidebar(df,df_metrics)
-view = st.sidebar.radio("Select a view:", ("Dashboard", "Trade Analysis"))
+view = st.sidebar.radio("Select a view:", ("Dashboard", "Trades"))
 
 if view == "Dashboard":
     st.title("📊 Trade Performance Dashboard")
@@ -44,12 +44,12 @@ if view == "Dashboard":
     with col2:
         st.dataframe(asset_type_df, hide_index=True)
 
-elif view == "Trade Analysis":
-    st.title("Trade Analysis")
-    
+elif view == "Trades":
+    st.title("Trades")
+    dashboard.display_transactions(df)
     # Run clustering and show analysis
-    df_clustered = dashboard.display_metrics(df,df_metrics)
-    st.dataframe(df_metrics)
+    # df_clustered = dashboard.display_metrics(df,df_metrics)
+    # st.dataframe(df_metrics)
 
 
 

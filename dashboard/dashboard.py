@@ -1,5 +1,7 @@
 import streamlit as st
 import pandas as pd
+import numpy as np
+import random
 import plotly.express as px
 import altair as alt
 from datetime import datetime
@@ -36,7 +38,6 @@ def plot_cumulative_pnl(df):
     )
 
     st.altair_chart(chart, use_container_width=True)
-
 
 def plot_pnl_per_day_and_hour(df):
     pnl_per_day = calculate_avg_pnl_by_weekday(df)
@@ -150,3 +151,51 @@ def display_metrics_dashboard(df, metrics):
     h.metric("Avg loss hold", avg_loss_hold, border=True) 
     i.metric("Top loss", top_loss, border=True)
     j.metric("Loss streak", streak_loss, border=True)
+
+def display_transactions(df_filtered):
+    df_filtered['execution_time_sell'] = pd.to_datetime(df_filtered['execution_time_sell'], errors='coerce')
+    df_filtered['TradeDate'] = df_filtered['execution_time_sell'].dt.date
+    df_filtered['Result'] = np.where(df_filtered['net_pnl'] > 0, 'Win', 'Lose')
+    df_filtered['net_pnl_percentage'] = ((df_filtered['price_sell']-df_filtered['price_buy']) / df_filtered['price_buy'])
+    df_filtered['net_pnl_percentage_formatted'] = df_filtered['net_pnl_percentage'].apply(lambda x: f"{x:.0%}" if pd.notna(x) else "") #Handle nan values
+
+    # Add dummy stars and views history (replace with your actual data if available)
+    df_filtered['stars'] = [random.randint(0, 1000) for _ in range(len(df_filtered))]
+    df_filtered['views_history'] = [[random.randint(0, 5000) for _ in range(30)] for _ in range(len(df_filtered))]
+
+    # 1. Define column display names, order, and formatting
+    column_definitions = {
+        "TradeDate": {"display_name": "Date", "format": st.column_config.DateColumn},
+        "symbol": {"display_name": "Symbol", "format": st.column_config.TextColumn},
+        "OPT": {"display_name": "OPT", "format": st.column_config.TextColumn},
+        "shares": {"display_name": "Shares", "format": lambda x: st.column_config.NumberColumn(x, format="%d")},
+        "price_buy": {"display_name": "Buy Price", "format": lambda x: st.column_config.NumberColumn(x, format="$%.2f")},
+        "price_sell": {"display_name": "Sell Price", "format": lambda x: st.column_config.NumberColumn(x, format="$%.2f")},
+        "net_pnl": {"display_name": "Net P&L ($)", "format": lambda x: st.column_config.NumberColumn(x, format="$%.2f")},
+        "net_pnl_percentage_formatted": {"display_name": "Net P&L (%)", "format": st.column_config.TextColumn},
+        "holding_period": {"display_name": "Holding (m)", "format": lambda x: st.column_config.NumberColumn(x, format="%d")},
+        "stars": {"display_name": "Stars", "format": lambda x: st.column_config.NumberColumn(x, format="%d ⭐")},
+        "views_history": {"display_name": "Views (past 30 days)", "format": lambda x: st.column_config.LineChartColumn(x, y_min=0, y_max=5000)},
+    }
+
+    # 2. Create default columns list in the desired order
+    default_columns = [col for col in column_definitions if col in df_filtered.columns]
+
+
+    views_history_data = df_filtered['views_history'].copy()
+
+    # 3. Create df_to_display with ONLY default columns
+    df_to_display = df_filtered[default_columns].copy()  # Use default_columns directly
+
+    if 'views_history' in default_columns and 'views_history' in df_filtered.columns:  # Check if both exist
+        df_to_display['views_history'] = views_history_data
+
+    # 4. Create column_config using the ordered column_definitions
+    column_config = {}
+    for col in default_columns:  # Iterate over default_columns
+        if col in column_definitions:
+            definition = column_definitions[col]
+            column_config[col] = definition["format"](definition["display_name"])
+
+    return st.dataframe(df_to_display, column_config=column_config, hide_index=True, height=1000)
+    # return df_to_display, column_config
