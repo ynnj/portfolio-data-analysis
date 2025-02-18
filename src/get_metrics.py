@@ -28,7 +28,6 @@ def calculate_avg_pnl_by_hour(df):
     """Calculates the average PnL per hour, grouped by hour of the day."""
     if df.empty:
         return pd.DataFrame(columns=['Hour', 'Average PnL'])  # Return empty if no trades
-    print(df.columns)
     df['execution_hour'] = pd.to_datetime(df['execution_time_sell']).dt.hour
     avg_pnl_by_hour = df.groupby('execution_hour')['net_pnl'].mean().reset_index()
     avg_pnl_by_hour.columns = ['Hour', 'Average PnL']
@@ -49,7 +48,6 @@ def calculate_pnl_by_symbol(df):
     # Calculate weighted PnL (number of trades of that symbol divided by total trades)
     total_trades_sum = grouped['total_trades'].sum()
     grouped['weighted'] = grouped['total_trades'] / total_trades_sum
-    print(grouped)
     return grouped
 
 def calculate_pnl_by_subcategory(df):
@@ -231,7 +229,10 @@ def calculate_top_loss(df):
 
     return float(df['net_pnl'].min())  # Convert to float explicitly
 
-
+def calculate_pnl_total(df):
+    # Group by 'symbol' and calculate total PnL, total investment, and total trades
+    total_pnl = df['net_pnl'].sum()
+    return total_pnl
 
 if __name__ == "__main__":
     df, latest_metrics = load_data(db_path)

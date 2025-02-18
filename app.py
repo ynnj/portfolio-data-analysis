@@ -17,27 +17,32 @@ except Exception as e:
     st.stop()
 
 
-st.title("📊 Portfolio Data Analysis")
-# Set Streamlit page config
-# st.set_page_config(page_title="Trade Performance Dashboard", layout="wide",initial_sidebar_state="expanded")
-
-# Sidebar navigation
+# Sidebar Navigation
+st.sidebar.header('📊 Key Metrics')
+dashboard.display_metrics_sidebar(df,df_metrics)
 view = st.sidebar.radio("Select a view:", ("Dashboard", "Trade Analysis"))
 
 if view == "Dashboard":
     st.title("📊 Trade Performance Dashboard")
-    # Display cumulative PnL graph
+
+    dashboard.display_metrics_dashboard(df, df_metrics)
     dashboard.plot_cumulative_pnl(df)
     
     # # Plot Average PnL per Day and Hour
-    # day_chart, hour_chart = dashboard.plot_pnl_per_day_and_hour(df)
-    # st.altair_chart(day_chart)
-    # st.altair_chart(hour_chart)
+    day_chart, hour_chart = dashboard.plot_pnl_per_day_and_hour(df)
+    col1, col2 = st.columns(2)  # Create two columns
+    with col1:
+        st.altair_chart(day_chart)
+    with col2:
+        st.altair_chart(hour_chart)
     
-    # # Display assets and asset type tables
-    # assets_df, asset_type_df = dashboard.plot_assets(df)
-    # st.dataframe(assets_df)
-    # st.dataframe(asset_type_df)
+    # Display assets and asset type tables
+    assets_df, asset_type_df = dashboard.plot_assets(df)
+    col1, col2 = st.columns(2)  # Create two columns
+    with col1:
+        st.dataframe(assets_df, hide_index=True)
+    with col2:
+        st.dataframe(asset_type_df, hide_index=True)
 
 elif view == "Trade Analysis":
     st.title("Trade Analysis")

@@ -26,12 +26,17 @@ def load_data(db_utils):
 
 def plot_cumulative_pnl(df):
     df['cumulative_pnl'] = df['net_pnl'].cumsum()
-    fig_cum_pnl = px.area(df, x="execution_time_sell", y="cumulative_pnl")
-    fig_cum_pnl.update_xaxes(showgrid=False, title_text="", showticklabels=False)
-    fig_cum_pnl.update_yaxes(showgrid=False, title_text="")
-    fig_cum_pnl.update_traces(fillcolor="skyblue", opacity=0.7)
-    fig_cum_pnl.update_layout(plot_bgcolor='white')
-    st.plotly_chart(fig_cum_pnl, use_container_width=True)
+    df['execution_time_sell'] = pd.to_datetime(df['execution_time_sell'])
+
+    chart = alt.Chart(df).mark_line().encode(
+        x=alt.X('execution_time_sell:T', axis=alt.Axis(title=None, labels=True, ticks=True)),  # Remove x-axis labels and ticks
+        y=alt.Y('cumulative_pnl:Q', axis=alt.Axis(title=None, labels=True, ticks=True))      # Remove y-axis labels and ticks
+    ).properties(
+        width=600  # Adjust width as needed
+    )
+
+    st.altair_chart(chart, use_container_width=True)
+
 
 def plot_pnl_per_day_and_hour(df):
     pnl_per_day = calculate_avg_pnl_by_weekday(df)
@@ -67,25 +72,45 @@ def plot_pnl_per_day_and_hour(df):
 def plot_assets(df):
     assets_df = calculate_pnl_by_symbol(df)
     asset_type_df = calculate_pnl_by_subcategory(df)
+
+
+    assets_df['pnl'] = assets_df['pnl'].apply(lambda x: f"-${abs(x):,.0f}" if x < 0 else f"${x:,.0f}")
+    assets_df['pnl %'] = assets_df['pnl %'].map('{:,.0f}%'.format)
+    assets_df['weighted'] = (assets_df['weighted'] * 100).map('{:,.0f}%'.format)
+
+    assets_df = assets_df.rename(columns={
+    'symbol': 'Symbol',
+    'pnl': 'Total P&L',
+    'total_trades': 'Trades',
+    'pnl %': 'P&L Percentage',
+    'weighted': 'Weight'
+    })
+
+
+    asset_type_df['total_pnl'] = asset_type_df['total_pnl'].apply(lambda x: f"-${abs(x):,.0f}" if x < 0 else f"${x:,.0f}")
+    asset_type_df['pnl %'] = asset_type_df['pnl %'].map('{:,.0f}%'.format)
+    asset_type_df['weighted'] = (asset_type_df['weighted'] * 100).map('{:,.0f}%'.format)
+
+    asset_type_df = asset_type_df.rename(columns={
+    'subcategory': 'Type',
+    'total_pnl': 'Total P&L',
+    'total_trades': 'Trades',
+    'pnl %': 'P&L Percentage',
+    'weighted': 'Weight'
+    })
     
     return assets_df, asset_type_df
 
-def display_metrics(df, metrics):
-
-    # profit_factor = calculate_profit_factor(df)
-    # avg_win = "${:,.0f}".format(calculate_avg_win(df))
-    # trade_durations = calculate_trade_duration(df)
-    # avg_loss = "-${:,.0f}".format(-1*calculate_avg_loss(df))
-
+def display_metrics_sidebar(df, metrics):
+    profit_factor = calculate_profit_factor(df)
+    tot_pnl="${:,.0f}".format(calculate_pnl_total(df))
     win_rate = "{:,.0f}%".format(calculate_win_rate(metrics).iloc[0])
-        # win_rate = "{:,.0f}%".format(calculate_win_rate(metrics))
-    print(win_rate)
-    tot_trades = metrics['total_trades'].iloc[0]  # Or use .sum() if it's a series you want to sum
+    
+    tot_trades = metrics['total_trades'].iloc[0]  
+    st.sidebar.metric("PnL", tot_pnl)
     st.sidebar.metric("Total Trades", int(tot_trades))
     st.sidebar.metric("Win Rate", win_rate)
-    # st.sidebar.metric("Profit Factor", profit_factor)
-    # st.sidebar.metric("Avg Win", avg_win)
-    # st.sidebar.metric("Avg Loss", avg_loss)
+    st.sidebar.metric("Profit Factor", profit_factor)
 
 def trade_analysis(df):
     # Apply clustering and analysis here
@@ -96,3 +121,32 @@ def trade_analysis(df):
     df = apply_kmeans(df, 3)
     
     return df
+
+def display_metrics_dashboard(df, metrics):
+    a, b, c, d, e = st.columns(5)
+    f,g,h,i,j = st.columns(5)
+    win_rate="{:,.0f}%".format(calculate_win_rate(metrics).iloc[0])
+    profit_factor=calculate_profit_factor(df)
+    avg_win="${:,.0f}".format(calculate_avg_win(df))
+    trade_durations = calculate_trade_duration(df)
+    avg_loss="-${:,.0f}".format(-1*calculate_avg_loss(df))
+    trade_durations = calculate_trade_duration(df)
+    avg_win_hold= f"{trade_durations['Winning Trades']:,.0f}m"
+    avg_loss_hold=f"{trade_durations['Losing Trades']:,.0f}m"
+    top_win="${:,.0f}".format(calculate_top_win(df))
+    top_loss="${:,.0f}".format(calculate_top_loss(df))
+    trade_consecutive=calculate_consecutive_performance(df)
+    streak_win=trade_consecutive['Max Wins']
+    streak_loss=trade_consecutive['Max Losses']
+
+    a.metric("Win Rate", win_rate, border=True)
+    b.metric("Avg win", avg_win, border=True)
+    c.metric("Avg win hold", avg_win_hold, border=True)
+    d.metric("Top win", top_win, border=True)
+    e.metric("Win streak", streak_win, border=True)
+    
+    f.metric("Profit factor", profit_factor, border=True)
+    g.metric("Avg loss", avg_loss, border=True)
+    h.metric("Avg loss hold", avg_loss_hold, border=True) 
+    i.metric("Top loss", top_loss, border=True)
+    j.metric("Loss streak", streak_loss, border=True)
