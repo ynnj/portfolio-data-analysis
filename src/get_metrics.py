@@ -234,6 +234,40 @@ def calculate_pnl_total(df):
     total_pnl = df['net_pnl'].sum()
     return total_pnl
 
+def calculate_pnl_by_period(df):
+    # Ensure 'execution_time_sell' is a datetime column
+    df['execution_time_sell'] = pd.to_datetime(df['execution_time_sell'], errors='coerce')
+
+    # Extract different time periods
+    df['Year'] = df['execution_time_sell'].dt.year
+    df['Month'] = df['execution_time_sell'].dt.to_period('M')  # 'YYYY-MM' format
+    df['Week'] = df['execution_time_sell'].dt.to_period('W')  # 'YYYY-Wxx' format
+    df['Day'] = df['execution_time_sell'].dt.date  # Only date part
+    
+    # Calculate PnL for each period
+    pnl_by_year = df.groupby('Year')['net_pnl'].sum().reset_index()
+    pnl_by_month = df.groupby('Month')['net_pnl'].sum().reset_index()
+    pnl_by_week = df.groupby('Week')['net_pnl'].sum().reset_index()
+    pnl_by_day = df.groupby('Day')['net_pnl'].sum().reset_index()
+
+    # Get the latest PnL safely and return as a dictionary
+    last_pnl_by_year = pnl_by_year.iloc[-1].to_dict() if not pnl_by_year.empty else {}
+    last_pnl_by_month = pnl_by_month.iloc[-1].to_dict() if not pnl_by_month.empty else {}
+    last_pnl_by_week = pnl_by_week.iloc[-1].to_dict() if not pnl_by_week.empty else {}
+    last_pnl_by_day = pnl_by_day.iloc[-1].to_dict() if not pnl_by_day.empty else {}
+
+    return {
+        "pnl_by_year": pnl_by_year,
+        "pnl_by_month": pnl_by_month,
+        "pnl_by_week": pnl_by_week,
+        "pnl_by_day": pnl_by_day,
+        "last_pnl_by_year": last_pnl_by_year,
+        "last_pnl_by_month": last_pnl_by_month,
+        "last_pnl_by_week": last_pnl_by_week,
+        "last_pnl_by_day": last_pnl_by_day,
+    }
+
+
 if __name__ == "__main__":
     df, latest_metrics = load_data(db_path)
     print("Total Trades:", latest_metrics['total_trades'])

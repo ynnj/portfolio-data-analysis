@@ -4,8 +4,10 @@ import numpy as np
 import random
 import plotly.express as px
 import altair as alt
-from datetime import datetime
-from sklearn.preprocessing import LabelEncoder
+import calplot 
+from datetime import datetime, timedelta
+from streamlit_calendar import calendar
+from sklearn.preprocessing import StandardScaler, LabelEncoder
 from sklearn.cluster import KMeans
 import sys
 import os
@@ -198,4 +200,160 @@ def display_transactions(df_filtered):
             column_config[col] = definition["format"](definition["display_name"])
 
     return st.dataframe(df_to_display, column_config=column_config, hide_index=True, height=1000)
-    # return df_to_display, column_config
+
+def display_calendar_metrics(df):
+    pnl_data = calculate_pnl_by_period(df)
+
+    # Safely access net_pnl values
+    total_pnl_year = pnl_data["last_pnl_by_year"].get("net_pnl", 0)
+    total_pnl_month = pnl_data["last_pnl_by_month"].get("net_pnl", 0)
+    total_pnl_week = pnl_data["last_pnl_by_week"].get("net_pnl", 0)
+    total_pnl_day = pnl_data["last_pnl_by_day"].get("net_pnl", 0)
+
+    col1, col2, col3, col4 = st.columns(4)
+    col1.metric("This Year", f"${total_pnl_year:,.0f}")
+    col2.metric("This Month", f"${total_pnl_month:,.0f}")
+    col3.metric("This Week", f"${total_pnl_week:,.0f}")
+    col4.metric("Today", f"${total_pnl_day:,.0f}")
+
+def display_calendar(df):
+
+    df['execution_time_sell'] = pd.to_datetime(df['execution_time_sell'], errors='coerce')
+    df.set_index('execution_time_sell', inplace=True)
+    df = df.sort_index()
+
+    def create_calendar_heatmap(data):
+        if data.empty:
+            st.warning("No data available for the selected month and year.")
+            return None
+        
+        data['net_pnl'] = pd.to_numeric(data['net_pnl'], errors='coerce')
+        fig = calplot.calplot(data['net_pnl'], cmap='RdYlGn', colorbar=True)
+        return fig[0]  # Extract figure from tuple
+
+    fig = create_calendar_heatmap(df)
+    if fig:
+        st.pyplot(fig)
+
+
+    # CALENDAR
+
+    df_grouped = df.resample('D').agg({'net_pnl': 'sum', 'symbol': 'count'})
+    df_grouped.rename(columns={'symbol': 'total_trades'}, inplace=True)
+
+    # Split into positive and negative PnL
+    df_grouped['positive_pnl'] = df_grouped['net_pnl'].apply(lambda x: x if x > 0 else 0)
+    df_grouped['negative_pnl'] = df_grouped['net_pnl'].apply(lambda x: x if x < 0 else 0)
+
+    # Streamlit UI
+    st.header("Filter Options")
+    selected_year = st.selectbox("Select Year", sorted(df_grouped.index.year.unique()), index=0)
+    selected_month = st.selectbox("Select Month", range(1, 13), index=datetime.now().month - 1, format_func=lambda x: datetime(2000, x, 1).strftime('%B'))
+
+    # Filter by selected month and year
+    filtered_df = df_grouped[(df_grouped.index.year == selected_year) & (df_grouped.index.month == selected_month)]
+
+    # Convert to event format (separate positive & negative PnL)
+    events = []
+
+    for row in filtered_df.itertuples():
+        # Positive PnL event
+        if row.positive_pnl > 0:
+            events.append({
+                "title": f"${round(row.positive_pnl)} [{row.total_trades}]",
+                "start": row.Index.strftime("%Y-%m-%d"),
+                "color": "green",
+            })
+
+        # Negative PnL event
+        if row.negative_pnl < 0:
+            events.append({
+                "title": f"-${round(row.negative_pnl*-1)} [{row.total_trades}]",
+                "start": row.Index.strftime("%Y-%m-%d"),
+                "color": "red",
+            })
+
+    # Display interactive calendar
+    calendar(events=events, options={"initialView": "dayGridMonth"}, key="pnl_calendar")
+
+    # Show raw data
+    if st.checkbox("Show Raw Data"):
+        st.dataframe(filtered_df.reset_index())
+
+
+def display_trade_clusters(df):
+    df['execution_time_sell'] = pd.to_datetime(df['execution_time_sell'])
+    df = df.sort_values(by="execution_time_sell")
+    df['weekday'] = df['execution_time_sell'].dt.day_name()
+    numeric_cols = ['net_pnl', 'holding_period', 'weekday']  # Removed 'shares', replaced with 'subcategory'
+
+    # Convert 'weekday' into numeric format using Label Encoding
+    weekday_encoder = LabelEncoder()
+    df['weekday'] = weekday_encoder.fit_transform(df['weekday'])
+
+    # Convert 'subcategory' into numeric using One-Hot Encoding
+    df = pd.get_dummies(df, columns=['subcategory'])
+
+    # Update feature list to include newly created one-hot-encoded subcategory columns
+    numeric_cols.extend([col for col in df.columns if col.startswith("subcategory_")])
+
+    # Perform clustering
+    def apply_kmeans(df, n_clusters=3):
+        scaler = StandardScaler()
+        scaled_data = scaler.fit_transform(df[numeric_cols])  # Scale only numeric data
+        kmeans = KMeans(n_clusters=n_clusters, random_state=42, n_init=10)
+        df['Cluster'] = kmeans.fit_predict(scaled_data)
+        return df, kmeans
+
+    # Streamlit UI
+    st.header('Settings')
+    n_clusters = st.slider('Number of Clusters', min_value=2, max_value=5, value=3)
+
+    df, model = apply_kmeans(df, n_clusters)
+
+    # Compute cluster characteristics (including total trades per cluster)
+    cluster_summary = df.groupby('Cluster')[numeric_cols].mean()
+    cluster_summary['Total Trades'] = df['Cluster'].value_counts()
+
+    col1, col2 = st.columns(2)  # Create two columns
+    with col1:
+        st.write("## Cluster Characteristics")
+        st.write(cluster_summary)
+
+        # Assign meaning based on cluster properties
+        cluster_labels = {}
+        for cluster in df['Cluster'].unique():
+            mean_pnl = cluster_summary.loc[cluster, 'net_pnl']
+            mean_duration = cluster_summary.loc[cluster, 'holding_period']
+
+            if mean_pnl > 20:
+                label = "High-Gain Trades"
+            elif mean_pnl < -20:
+                label = "High-Loss Trades"
+            elif mean_duration > 60:
+                label = "Long-Term Trades"
+            else:
+                label = "Stable Trades"
+            
+            cluster_labels[cluster] = label
+
+        df['Cluster Label'] = df['Cluster'].map(cluster_labels)
+
+    with col2:
+
+        st.write("## Cluster Interpretation")
+        st.dataframe(df[['Cluster', 'Cluster Label']].drop_duplicates())
+
+    # Plot clustering results using Plotly with more contrasting colors
+    fig = px.scatter(
+        df,
+        x='net_pnl',
+        y='holding_period',
+        color=df['Cluster'].astype(str),  # Convert to string for categorical coloring
+        hover_data=['Cluster Label'],
+        title="Trade Clustering",
+        labels={'net_pnl': 'Net PnL', 'holding_period': 'Holding Period', 'color': 'Cluster'},
+        color_discrete_sequence=px.colors.qualitative.Set1  # More contrasting colors
+    )
+
+    st.plotly_chart(fig, use_container_width=True)

@@ -7,7 +7,7 @@ import sys
 import plotly.express as px
 from streamlit_elements import elements, mui, html, dashboard
 import random
-import calplot  # Install: pip install calplot
+import calplot 
 import matplotlib.pyplot as plt
 from datetime import datetime, timedelta
 from streamlit_calendar import calendar
