@@ -10,3 +10,5 @@ trade_analysis.py
 get_transactions.py
 process_transactions.py
 signals.py
+cron_log.txt
+streamlit-elements
