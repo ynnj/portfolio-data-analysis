@@ -6,4 +6,7 @@ real_all_transactions.db
 paper_all_transactions.db
 trades.csv
 output.csv
-
+trade_analysis.py
+get_transactions.py
+process_transactions.py
+signals.py

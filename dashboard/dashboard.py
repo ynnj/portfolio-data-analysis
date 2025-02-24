@@ -18,6 +18,7 @@ from get_metrics import *
 
 def load_data(db_utils):
     metrics = db_utils.fetch_data("SELECT * FROM trade_metrics ORDER BY date DESC LIMIT 1")
+    # print(metrics)
     df = db_utils.fetch_data("SELECT * FROM merged_trades")
     
     if df is None or df.empty or metrics is None or metrics.empty:
@@ -105,11 +106,12 @@ def plot_assets(df):
     return assets_df, asset_type_df
 
 def display_metrics_sidebar(df, metrics):
-    profit_factor = calculate_profit_factor(df)
+    # profit_factor = round(float(metrics['profit_factor'].iloc[-1])*100)
+    profit_factor = "{:,.0f}%".format(metrics['profit_factor'].iloc[-1]*100)
     tot_pnl="${:,.0f}".format(calculate_pnl_total(df))
-    win_rate = "{:,.0f}%".format(calculate_win_rate(metrics).iloc[0])
+    win_rate = "{:,.0f}%".format(calculate_win_rate(metrics).iloc[-1])
     
-    tot_trades = metrics['total_trades'].iloc[0]  
+    tot_trades = metrics['total_trades'].iloc[-1]
     st.sidebar.metric("PnL", tot_pnl)
     st.sidebar.metric("Total Trades", int(tot_trades))
     st.sidebar.metric("Win Rate", win_rate)
@@ -128,7 +130,7 @@ def trade_analysis(df):
 def display_metrics_dashboard(df, metrics):
     a, b, c, d, e = st.columns(5)
     f,g,h,i,j = st.columns(5)
-    win_rate="{:,.0f}%".format(calculate_win_rate(metrics).iloc[0])
+    win_rate="{:,.0f}%".format(calculate_win_rate(metrics).iloc[-1])
     profit_factor=calculate_profit_factor(df)
     avg_win="${:,.0f}".format(calculate_avg_win(df))
     trade_durations = calculate_trade_duration(df)
@@ -173,11 +175,11 @@ def display_transactions(df_filtered):
         "shares": {"display_name": "Shares", "format": lambda x: st.column_config.NumberColumn(x, format="%d")},
         "price_buy": {"display_name": "Buy Price", "format": lambda x: st.column_config.NumberColumn(x, format="$%.2f")},
         "price_sell": {"display_name": "Sell Price", "format": lambda x: st.column_config.NumberColumn(x, format="$%.2f")},
-        "net_pnl": {"display_name": "Net P&L ($)", "format": lambda x: st.column_config.NumberColumn(x, format="$%.2f")},
-        "net_pnl_percentage_formatted": {"display_name": "Net P&L (%)", "format": st.column_config.TextColumn},
-        "holding_period": {"display_name": "Holding (m)", "format": lambda x: st.column_config.NumberColumn(x, format="%d")},
-        "stars": {"display_name": "Stars", "format": lambda x: st.column_config.NumberColumn(x, format="%d ⭐")},
+        "net_pnl": {"display_name": "Net P&L", "format": lambda x: st.column_config.NumberColumn(x, format="$%.2f")},
+        "net_pnl_percentage_formatted": {"display_name": "Net P&L", "format": st.column_config.TextColumn},
+        "holding_period": {"display_name": "Hold", "format": lambda x: st.column_config.NumberColumn(x, format="%d")},
         "views_history": {"display_name": "Views (past 30 days)", "format": lambda x: st.column_config.LineChartColumn(x, y_min=0, y_max=5000)},
+        "stars": {"display_name": "Stars", "format": lambda x: st.column_config.NumberColumn(x, format="%d ⭐")},
     }
 
     # 2. Create default columns list in the desired order

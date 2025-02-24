@@ -9,6 +9,7 @@ from dotenv import load_dotenv
 load_dotenv()
 
 APP_ENV = os.getenv("APP_ENV", "development")  # Default to 'development'
+DATABASE_FILE_LOCAL = os.getenv("DATABASE_FILE_LOCAL") # Path to local DB
 
 if APP_ENV == "production":
     try:
@@ -16,7 +17,7 @@ if APP_ENV == "production":
         AWS_ACCESS_KEY_ID = st.secrets["AWS_ACCESS_KEY_ID"]
         AWS_SECRET_ACCESS_KEY = st.secrets["AWS_SECRET_ACCESS_KEY"]
         AWS_BUCKET_NAME = st.secrets["AWS_BUCKET_NAME"]
-        DB_FILE_NAME_IN_S3 = st.secrets["DATABASE_NAME_PAPER"]
+        DB_FILE_NAME_IN_S3 = st.secrets["DATABASE_NAME_REAL"]
     except Exception as e:
         print(f"⚠️ Error loading Streamlit secrets: {e}")
         exit(1)
@@ -24,7 +25,7 @@ elif APP_ENV == "development":
     AWS_ACCESS_KEY_ID = os.getenv("AWS_ACCESS_KEY_ID")
     AWS_SECRET_ACCESS_KEY = os.getenv("AWS_SECRET_ACCESS_KEY")
     AWS_BUCKET_NAME = os.getenv("AWS_BUCKET_NAME")
-    DB_FILE_NAME_IN_S3 = os.getenv("DATABASE_NAME_PAPER")
+    DB_FILE_NAME_IN_S3 = os.getenv("DATABASE_NAME_REAL")
 else:
     print(f"❌ Invalid APP_ENV: {APP_ENV}. Must be 'production' or 'development'.")
     exit(1)
@@ -51,10 +52,18 @@ def download_db_from_s3(bucket_name, s3_file_name):
         return None
 
 def get_db_connection():
-    """Gets a database connection (downloads from S3 if needed)."""
-    db_file_path = download_db_from_s3(AWS_BUCKET_NAME, DB_FILE_NAME_IN_S3)
-    if db_file_path is None:
+    """Gets a database connection (from S3 or local)."""
+    if APP_ENV == "production":
+      db_file_path = download_db_from_s3(AWS_BUCKET_NAME, DB_FILE_NAME_IN_S3)
+      if db_file_path is None:
+          return None
+    elif APP_ENV == "development":
+      db_file_path = DATABASE_FILE_LOCAL  # Use local path
+      if not os.path.exists(db_file_path):
+        print(f"❌ Local database file not found: {db_file_path}")
         return None
+    else:  # Should not happen, but good to have
+      return None
 
     try:
         conn = sqlite3.connect(db_file_path)
@@ -62,22 +71,6 @@ def get_db_connection():
     except sqlite3.Error as e:
         print(f"❌ Database connection error: {e}")
         return None
-
-def fetch_data(query):
-    """Fetches data from the database."""
-    conn = get_db_connection()
-    if conn is None:
-        return None
-
-    try:
-        df = pd.read_sql_query(query, conn)
-        return df
-    except sqlite3.Error as e:
-        print(f"❌ Database query error: {e}")
-        return None
-    finally:
-        if 'conn' in locals() and conn:
-            conn.close()
 
 def execute_query(query):
     """Executes a SQL query (INSERT, UPDATE, DELETE)."""
@@ -97,6 +90,23 @@ def execute_query(query):
     finally:
         if 'conn' in locals() and conn:
             conn.close()
+
+def fetch_data(query):
+    """Fetches data from the database."""
+    conn = get_db_connection()
+    if conn is None:
+        return None
+
+    try:
+        df = pd.read_sql_query(query, conn)
+        return df
+    except sqlite3.Error as e:
+        print(f"❌ Database query error: {e}")
+        return None
+    finally:
+        if 'conn' in locals() and conn:
+            conn.close()
+
 
 def get_metrics_df():
     """Retrieves the 'metrics' table as a DataFrame."""

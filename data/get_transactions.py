@@ -310,6 +310,7 @@ if __name__ == "__main__":
     try:
         reference_code = get_flex_query_report(IBKR_TOKEN, FLEX_QUERY_ID)
         csv_data = download_flex_report(IBKR_TOKEN, reference_code)  # This is already CSV data
+
         transactions = process_csv_data(csv_data)  # Reuse process_csv_data
 
         for transaction in transactions:
