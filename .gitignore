@@ -12,3 +12,4 @@ process_transactions.py
 signals.py
 cron_log.txt
 streamlit-elements
+raw_transactions

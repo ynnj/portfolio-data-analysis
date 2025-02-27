@@ -115,10 +115,12 @@ for _, sell in sells.iterrows():
         buy_order_id = buy_order['order_id']  # Retrieve the order ID
         
         matched_shares = min(sell_shares, buy_shares)
+        proportional_buy_commission = (buy_order['IBCommission'] / buy_order['Quantity']) * matched_shares
 
         # Compute trade statistics
         realized_pnl = (sell_price - buy_order['TradePrice']) * matched_shares * 100
-        net_pnl = realized_pnl + (buy_order['IBCommission'] + sell_commission)
+        # net_pnl = realized_pnl + (buy_order['IBCommission'] + sell_commission)
+        net_pnl = realized_pnl + (proportional_buy_commission + sell_commission)  # Use proportional commission here
         holding_period = (sell_execution_time - buy_order['OrderTime']).total_seconds() / 60  # Minutes
         win_loss = 'Win' if net_pnl > 0 else 'Loss'
 
@@ -133,7 +135,7 @@ for _, sell in sells.iterrows():
             'execution_time_buy': buy_order['OrderTime'],
             'execution_time_sell': sell_execution_time,
             'realized_pnl': realized_pnl,
-            'commission_buy': buy_order['IBCommission'],
+            'commission_buy': proportional_buy_commission,
             'commission_sell': sell_commission,
             'net_pnl': net_pnl,
             'holding_period': holding_period,

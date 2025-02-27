@@ -92,5 +92,5 @@ webencodings==0.5.1
 websockets==10.4
 wordcloud==1.9.4
 yahoo-fin==0.8.9.1
-yfinance==0.2.52
+yfinance==0.2.54
 zipp==3.21.0

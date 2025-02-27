@@ -9,6 +9,8 @@ import math
 import numpy as np
 from io import StringIO
 import argparse
+from datetime import datetime
+
 
 # Load environment variables
 load_dotenv()
@@ -281,10 +283,25 @@ def insert_transaction(transaction):
     finally:
         conn.close()
 
-def save_to_csv(df, filename="trades.csv"):
+def save_to_csv(df):
+    """
+    Saves the transactions DataFrame to the "raw_data" folder with a filename format <DATE>_ibkr_transactions_raw.csv.
+    """
+    # Create folder if it doesn't exist
+    raw_data_folder = "raw_data"
+    os.makedirs(raw_data_folder, exist_ok=True)
+
+    # Define the filename with the date
+    filename = f"{datetime.now().strftime('%Y-%m-%d')}_ibkr_transactions_raw.csv"
+    filepath = os.path.join(raw_data_folder, filename)
+
     try:
-        df.to_csv(filename, index=False, encoding='utf-8')  # Explicit encoding
-        print(f"Data saved to {filename}")
+        if not os.path.exists(filepath):
+            df.to_csv(filepath, index=False, encoding='utf-8')  # Create new file
+        else:
+            df.to_csv(filepath, mode='a', index=False, header=False, encoding='utf-8')  # Append to existing file
+        
+        print(f"Data saved to {filepath}")
     except Exception as e:
         print(f"Error saving to CSV: {e}")
 
@@ -309,10 +326,11 @@ if __name__ == "__main__":
     create_transactions_table()
     try:
         reference_code = get_flex_query_report(IBKR_TOKEN, FLEX_QUERY_ID)
+        print(reference_code)
         csv_data = download_flex_report(IBKR_TOKEN, reference_code)  # This is already CSV data
-
+        print(csv_data)
         transactions = process_csv_data(csv_data)  # Reuse process_csv_data
-
+        print(transactions)
         for transaction in transactions:
             insert_transaction(transaction)
 

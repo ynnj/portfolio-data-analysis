@@ -16,6 +16,8 @@ except Exception as e:
     st.error(f"Error loading data: {e}")
     st.stop()
 
+st.set_page_config(layout="wide")
+
 # Sidebar Navigation
 st.sidebar.header('📊 Key Metrics')
 dashboard.display_metrics_sidebar(df,df_metrics)
@@ -25,6 +27,7 @@ if view == "Dashboard":
     st.title("📊 Trade Performance Dashboard")
 
     dashboard.display_metrics_dashboard(df, df_metrics)
+    dashboard.display_aggrid_pivot(df)
     dashboard.plot_cumulative_pnl(df)
     
     # # Plot Average PnL per Day and Hour

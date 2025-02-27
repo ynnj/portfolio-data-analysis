@@ -5,15 +5,19 @@ import random
 import plotly.express as px
 import altair as alt
 import calplot 
+import plotly.express as px
 from datetime import datetime, timedelta
 from streamlit_calendar import calendar
 from sklearn.preprocessing import StandardScaler, LabelEncoder
 from sklearn.cluster import KMeans
+from st_aggrid import AgGrid,GridUpdateMode, GridOptionsBuilder,DataReturnMode,JsCode
 import sys
 import os
+import json
 # Add the src folder to sys.path
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..', 'src')))
 from get_metrics import *
+from get_ticker_data import *
 
 
 def load_data(db_utils):
@@ -359,3 +363,375 @@ def display_trade_clusters(df):
     )
 
     st.plotly_chart(fig, use_container_width=True)
+
+def display_aggrid_pivot_old(df_filtered):
+
+
+    df_filtered['execution_time_sell'] = pd.to_datetime(df_filtered['execution_time_sell'], errors='coerce')
+    df_filtered['TradeDate'] = df_filtered['execution_time_sell'].dt.date
+    df_filtered['Result'] = np.where(df_filtered['net_pnl'] > 0, 'Win', 'Lose')
+    df_filtered['net_pnl_percentage'] = ((df_filtered['price_sell'] - df_filtered['price_buy']) / df_filtered['price_buy'])
+    df_filtered['TradeDate'] = pd.to_datetime(df_filtered['TradeDate'], errors='coerce').dt.date
+    df_filtered['stars'] = [random.randint(0, 1000) for _ in range(len(df_filtered))]
+    df_filtered['views_history'] = [[random.randint(0, 5000) for _ in range(30)] for _ in range(len(df_filtered))]
+    
+    df_filtered['holding_period_str'] = df_filtered['holding_period'].apply(lambda x: "{:.1f}".format(x) if pd.notna(x) else "")
+
+    df_range = get_ticker_range(df_filtered)
+
+    df_filtered['atr'] = df_filtered.merge(df_range[['atr']], left_index=True, right_index=True, how='left')['atr']
+    df_filtered['atr'] = df_filtered['atr'].apply(lambda x: round(x, 2))  # Round before displaying
+    df_filtered['capture'] = df_filtered.apply(
+        lambda row: row['net_pnl'] / row['atr'] if row['atr'] != 0 else 0, axis=1
+    )
+    df_filtered = df_filtered.sort_values(by="TradeDate", ascending=False)
+
+    
+
+    shouldDisplayPivoted = st.checkbox("Pivot data on Trade Date", value=True)
+    # shouldDisplayPivoted = False
+
+    gb = GridOptionsBuilder()
+
+    gb.configure_default_column(
+        resizable=True,
+        filterable=True,
+        sortable=True,
+        editable=False,
+    )
+
+    if shouldDisplayPivoted:
+        gb.configure_column(
+            field="TradeDate",
+            header_name="Trading Date",
+            # width=100,
+            rowGroup=True,
+            valueFormatter="value != undefined ? new Date(value).toLocaleDateString('en-US', {month: 'short', day: 'numeric', year: 'numeric'}) : ''"
+        )
+
+        gb.configure_column(
+            field="symbol",
+            header_name="Asset Symbol",
+            flex=1,
+            tooltipField="symbol",
+            rowGroup=True,
+        )
+
+        gb.configure_column(
+            field="shares",
+            header_name="Shares",
+            width=100,
+            type=["numericColumn"],
+            aggFunc="sum",
+            valueFormatter="value.toLocaleString('en-US')",
+        )
+
+        gb.configure_column(
+            field="net_pnl",
+            header_name="Total PnL",
+            width=100,
+            type=["numericColumn"],
+            aggFunc="sum",
+            valueFormatter="'$' + value.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2})",
+        )
+
+        gb.configure_column(
+            field="atr",
+            header_name="ATR",
+            width=100,
+            aggFunc="max",
+            type=["numericColumn"],
+            valueFormatter="'$' +value.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2})",
+        )
+
+        gb.configure_column(
+            field="capture",
+            header_name="Capture",
+            width=100,
+            aggFunc="max",
+            type=["numericColumn"],
+            valueFormatter="value.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2})+'%'",
+        )
+
+        gb.configure_column(
+            "views_history",
+            header_name="Views (30 days)",
+            width=200,
+            cellRenderer="agSparklineCellRenderer",
+            aggFunc="last",
+            cellRendererParams={
+                "sparklineOptions": {
+                    "type": "line",
+                    "line": {"stroke": "#3498db", "strokeWidth": 2},
+                }
+            },
+        )
+
+
+
+        # gb.configure_column(
+        #     field="holding_period",
+        #     header_name="Hold",
+        #     # width=180,
+        #     type=["numericColumn"],
+        #     aggFunc="avg",
+        #     valueFormatter="value.toLocaleString('en-US', {minimumFractionDigits: 1, maximumFractionDigits: })",
+        # )
+
+
+        # gb.configure_column(
+        #     field="stars",
+        #     header_name="Average Stars",
+        #     width=120,
+        #     type=["numericColumn"],
+        #     aggFunc="avg",
+        #     valueFormatter="value.toLocaleString('en-US', {minimumFractionDigits: 0})",
+        # )
+
+    else:
+        gb.configure_column(
+            field="TradeDate",
+            header_name="Trade Date",
+            width=120,
+            valueFormatter="value != undefined ? new Date(value).toLocaleDateString('en-US', {dateStyle:'medium'}): ''"
+        )
+
+        gb.configure_column(
+            field="symbol",
+            header_name="Symbol",
+            flex=1,
+            tooltipField="symbol",
+        )
+
+        gb.configure_column(
+            field="shares",
+            header_name="Shares",
+            width=80,
+            type=["numericColumn"],
+            valueFormatter="value.toLocaleString()",
+        )
+
+        gb.configure_column(
+            field="net_pnl",
+            header_name="Net P&L",
+            width=100,
+            type=["numericColumn"],
+            valueFormatter="value.toLocaleString()",
+        )
+
+        gb.configure_column(
+            field="price_buy",
+            header_name="Buy Price",
+            width=120,
+            type=["numericColumn"],
+            valueFormatter="value.toLocaleString()",
+        )
+
+        gb.configure_column(
+            field="price_sell",
+            header_name="Sell Price",
+            width=120,
+            type=["numericColumn"],
+            valueFormatter="value.toLocaleString()",
+        )
+
+        gb.configure_column(
+            field="holding_period",
+            header_name="Holding Period",
+            width=120,
+            type=["numericColumn"],
+            valueFormatter="value.toLocaleString()",
+        )
+
+        gb.configure_column(
+            field="stars",
+            header_name="Stars",
+            width=100,
+            type=["numericColumn"],
+            valueFormatter="value.toLocaleString()",
+        )
+
+        gb.configure_column(
+            "views_history",
+            header_name="Views (30 days)",
+            width=200,
+            cellRenderer="agSparklineCellRenderer",
+            cellRendererParams={
+                "sparklineOptions": {
+                    "type": "line",
+                    "line": {"stroke": "#3498db", "strokeWidth": 2},
+                }
+            },
+        )
+
+
+    gb.configure_grid_options(
+        tooltipShowDelay=0,
+        pivotMode=shouldDisplayPivoted,
+        suppressAggFuncInHeader=True, # Add this line
+        autoSizeColumns=True,  # Add this line
+    )
+
+    gb.configure_grid_options(
+        autoGroupColumnDef=dict(
+            minWidth=150,
+            pinned="left",
+            cellRendererParams=dict(suppressCount=True),
+        )
+    )
+    go = gb.build()    
+
+    AgGrid(df_filtered, gridOptions=go, height=400)
+
+
+def display_aggrid_pivot(df_filtered):
+    # Load Bootstrap CSS for styling
+    st.markdown('<link href="https://maxcdn.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css" rel="stylesheet">', unsafe_allow_html=True)
+
+    # Preprocess DataFrame
+    df_filtered['execution_time_sell'] = pd.to_datetime(df_filtered['execution_time_sell'], errors='coerce')
+    df_filtered['TradeDate'] = df_filtered['execution_time_sell'].dt.date
+    df_filtered['Result'] = np.where(df_filtered['net_pnl'] > 0, 'Win', 'Lose')
+    df_filtered['net_pnl_percentage'] = ((df_filtered['price_sell'] - df_filtered['price_buy']) / df_filtered['price_buy'])
+    df_filtered['stars'] = [random.randint(0, 1000) for _ in range(len(df_filtered))]
+    df_filtered['views_history'] = [[random.randint(0, 5000) for _ in range(30)] for _ in range(len(df_filtered))]
+    df_filtered['holding_period_str'] = df_filtered['holding_period'].apply(lambda x: "{:.1f}".format(x) if pd.notna(x) else "")
+
+    # Merge ATR values and calculate capture ratio
+    df_range = get_ticker_range(df_filtered)
+    df_filtered['atr'] = df_filtered.merge(df_range[['atr']], left_index=True, right_index=True, how='left')['atr']
+    df_filtered['atr'] = df_filtered['atr'].apply(lambda x: round(x, 2))
+    df_filtered['capture'] = df_filtered.apply(lambda row: row['net_pnl'] / row['atr'] if row['atr'] != 0 else 0, axis=1)
+
+    # Calculate cumulative net PnL per trading day and merge min/max values
+    df_filtered['cumulative_net_pnl'] = df_filtered.groupby("TradeDate")["net_pnl"].cumsum()
+    min_max_pnl = df_filtered.groupby("TradeDate")["cumulative_net_pnl"].agg(["min", "max"]).reset_index()
+    min_max_pnl.rename(columns={"min": "min_cum_pnl", "max": "max_cum_pnl"}, inplace=True)
+    df_filtered = df_filtered.merge(min_max_pnl, on="TradeDate", how="left")
+
+    # Calculate percent max profit and round values
+    df_filtered['percent_max_profit'] = df_filtered.apply(
+        lambda row: (row['cumulative_net_pnl'] / (abs(row['min_cum_pnl']) + row['max_cum_pnl'])) * 100 if (abs(row['min_cum_pnl']) + row['max_cum_pnl']) != 0 else 0,
+        axis=1
+    )
+    df_filtered['percent_max_profit'] = df_filtered['percent_max_profit']
+    # Add a new 'net_pnl_range' column to your dataframe
+
+    # Add the 'net_pnl_range' column to df_filtered for visualization
+    df_filtered['net_pnl_range'] = df_filtered.apply(
+        lambda row: row['net_pnl'] if pd.notna(row['net_pnl']) else 0, axis=1
+    )
+    
+    df_filtered = df_filtered.sort_values(by="TradeDate", ascending=False)
+
+    # Grid Options Builder
+    gb = GridOptionsBuilder()
+    gb.configure_default_column(
+        resizable=True,
+        filterable=True,
+        sortable=True,
+        editable=False,
+    )
+
+    # Configure columns
+    gb.configure_column(
+        field="TradeDate",
+        header_name="Trading Date",
+        rowGroup=True,
+        valueFormatter="value != undefined ? new Date(value).toLocaleDateString('en-US', {month: 'short', day: 'numeric', year: 'numeric'}) : ''"
+    )
+
+    gb.configure_column(
+        field="symbol",
+        header_name="Asset Symbol",
+        flex=1,
+        tooltipField="symbol",
+        rowGroup=True,
+    )
+
+    gb.configure_column(
+        field="net_pnl",
+        header_name="Total PnL",
+        width=100,
+        type=["numericColumn"],
+        aggFunc="sum",
+        valueFormatter="'$' + value.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2})",
+    )
+
+    gb.configure_column(
+        field="atr",
+        header_name="ATR",
+        width=100,
+        aggFunc="max",
+        type=["numericColumn"],
+        valueFormatter="'$' +value.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2})",
+    )
+
+    gb.configure_column(
+        field="capture",
+        header_name="Capture",
+        width=100,
+        aggFunc="max",
+        type=["numericColumn"],
+        valueFormatter="value.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2})+'%'",
+    )
+
+    gb.configure_column(
+        field="min_cum_pnl",
+        header_name="Min Cum PnL",
+        width=120,
+        type=["numericColumn"],
+        aggFunc="min",
+        valueFormatter="'$' + value.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2})",
+    )
+
+    gb.configure_column(
+        field="max_cum_pnl",
+        header_name="Max Cum PnL",
+        width=120,
+        type=["numericColumn"],
+        aggFunc="max",
+        valueFormatter="'$' + value.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2})",
+    )
+
+    gb.configure_column(
+        field="percent_max_profit",
+        header_name="% Max Profit",
+        width=120,
+        type=["numericColumn"],
+        aggFunc="last",
+        valueFormatter="value.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2})+'%'",
+    )
+
+    # Configure views history as sparkline (line chart)
+    gb.configure_column(
+        "views_history",
+        header_name="Views (30 days)",
+        width=200,
+        cellRenderer="agSparklineCellRenderer",
+        aggFunc="last",
+        cellRendererParams={
+            "sparklineOptions": {
+                "type": "line",
+                "line": {"stroke": "#3498db", "strokeWidth": 2},
+            }
+        },
+    )
+
+    # Additional grid options
+    gb.configure_grid_options(
+        pivotMode=True,
+        suppressAggFuncInHeader=True,
+        autoSizeColumns=True,
+    )
+
+    gb.configure_grid_options(
+        autoGroupColumnDef=dict(
+            minWidth=150,
+            pinned="left"
+        )
+    )
+
+    # Build and display AgGrid
+    go = gb.build()
+    AgGrid(df_filtered, gridOptions=go, height=400)
