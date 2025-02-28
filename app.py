@@ -8,35 +8,6 @@ from db_utils import fetch_data, execute_query, get_merged_trades_df, get_metric
 from src.get_metrics import *
 from dashboard import dashboard
 
-# # Test database connection
-# st.subheader("🔍 Checking Database Connection...")
-# test_query = "SELECT name FROM sqlite_master WHERE type='table';"
-# tables = fetch_data(test_query)
-
-# if tables is not None:
-#     st.success("✅ Connection successful!")
-#     st.write("### Available Tables:", tables)
-#     st.dataframe(get_merged_trades_df())
-#     st.dataframe(get_metrics_df())
-# else:
-#     st.error("❌ Failed to connect to the database.")
-#     st.stop()
-
-
-# # Load data
-# try:
-#     df=get_merged_trades_df()
-#     latest_metrics=get_metrics_df()
-# except Exception as e:
-#     st.error(f"Error loading data: {e}")
-#     st.stop()
-
-# # Make sure to extract a scalar value from 'latest_metrics' DataFrame
-# st.sidebar.metric("Total Trades", latest_metrics['total_trades'].iloc[0])
-
-
-
-
 
 # Load data
 try:
