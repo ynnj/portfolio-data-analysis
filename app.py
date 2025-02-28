@@ -16,12 +16,11 @@ except Exception as e:
     st.error(f"Error loading data: {e}")
     st.stop()
 
-st.set_page_config(layout="wide")
 
 # Sidebar Navigation
 st.sidebar.header('📊 Key Metrics')
 dashboard.display_metrics_sidebar(df,df_metrics)
-view = st.sidebar.radio("Select a view:", ("Dashboard", "Trades", "Calendar","Trade Analysis"))
+view = st.sidebar.radio("Select a view:", ("Dashboard", "Trades"))
 
 if view == "Dashboard":
     st.title("📊 Trade Performance Dashboard")
@@ -49,14 +48,75 @@ if view == "Dashboard":
 elif view == "Trades":
     st.title("Trades")
     dashboard.display_transactions(df)
+    # Run clustering and show analysis
+    # df_clustered = dashboard.display_metrics(df,df_metrics)
+    # st.dataframe(df_metrics)
 
-elif view == "Calendar":
-    st.title("Calendar")
-    dashboard.display_calendar_metrics(df)
-    dashboard.display_calendar(df)
 
-elif view == "Trade Analysis":
-    st.title("Trade Analysis")
-    dashboard.display_trade_clusters(df)
 
+# # Test database connection
+# st.subheader("🔍 Checking Database Connection...")
+# test_query = "SELECT name FROM sqlite_master WHERE type='table';"
+# tables = fetch_data(test_query)
+
+# if tables is not None:
+#     st.success("✅ Connection successful!")
+#     st.write("### Available Tables:", tables)
+#     st.dataframe(get_merged_trades_df())
+#     st.dataframe(get_metrics_df())
+# else:
+#     st.error("❌ Failed to connect to the database.")
+#     st.stop()
+
+
+# # Load data
+# try:
+#     df=get_merged_trades_df()
+#     latest_metrics=get_metrics_df()
+# except Exception as e:
+#     st.error(f"Error loading data: {e}")
+#     st.stop()
+
+# # Make sure to extract a scalar value from 'latest_metrics' DataFrame
+# st.sidebar.metric("Total Trades", latest_metrics['total_trades'].iloc[0])
+
+
+
+
+
+
+# SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
+# PROJECT_ROOT = os.path.dirname(SCRIPT_DIR)  # my_project/
+# sys.path.append(PROJECT_ROOT)
+
+
+# import db_utils # Absolute import
+# from src.get_metrics import *
+
+# print(hello world)
+
+# ... rest of your code
+
+# SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
+# SRC_DIR = os.path.join(SCRIPT_DIR, "src")  
+
+# GET_STATS_SCRIPT = os.path.join(SRC_DIR, "trade_analysis.py")
+
+# def run_pipeline(account_type):
+
+#     # Step 1: Analyze trades
+#     print("📊 Running trade analysis...")
+#     # subprocess.run(["python3", GET_STATS_SCRIPT, account_type])
+
+#     # # Step 2: Launch the Streamlit dashboard
+#     # print("📈 Opening trade dashboard...")
+#     # subprocess.run(["streamlit", "run", "dashboard/dashboard.py"])
+
+#     print("✅ Process Complete!")
+
+# # Run for both REAL and PAPER accounts
+# run_pipeline("real")
+# run_pipeline("paper")
+
+# subprocess.run(["streamlit", "run", "dashboard/dashboard.py"])
 
