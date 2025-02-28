@@ -3,6 +3,8 @@ appdirs==1.4.4
 attrs==25.1.0
 beautifulsoup4==4.13.3
 blinker==1.9.0
+boto3==1.36.21
+botocore==1.36.21
 bs4==0.0.2
 cachetools==5.5.1
 calplot==0.1.7.5
@@ -23,6 +25,7 @@ html5lib==1.1
 idna==3.10
 importlib_metadata==8.6.1
 Jinja2==3.1.5
+jmespath==1.0.1
 joblib==1.4.2
 jsonschema==4.23.0
 jsonschema-specifications==2024.10.1
@@ -61,6 +64,7 @@ requests==2.32.3
 requests-html==0.10.0
 rich==13.9.4
 rpds-py==0.22.3
+s3transfer==0.11.2
 schedule==1.2.2
 scikit-learn==1.6.1
 scipy==1.15.1
