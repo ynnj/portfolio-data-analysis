@@ -25,7 +25,7 @@ elif APP_ENV == "development":
     AWS_ACCESS_KEY_ID = os.getenv("AWS_ACCESS_KEY_ID")
     AWS_SECRET_ACCESS_KEY = os.getenv("AWS_SECRET_ACCESS_KEY")
     AWS_BUCKET_NAME = os.getenv("AWS_BUCKET_NAME")
-    DB_FILE_NAME_IN_S3 = os.getenv("DATABASE_NAME_REAL")
+    DB_FILE_NAME_IN_S3 = os.getenv("DATABASE_NAME_PAPER")
 else:
     print(f"❌ Invalid APP_ENV: {APP_ENV}. Must be 'production' or 'development'.")
     exit(1)
